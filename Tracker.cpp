@@ -1,148 +1,97 @@
 #include "Tracker.h"
 
-#define LEFT_KEY 2424832
-#define RIGHT_KEY 2555904
-#define UP_KEY 2490368
-#define DOWN_KEY 2621440
 
-#define DISPLAY_BGR 0
-#define DISPLAY_HSV 1
-#define DISPLAY_BACK_PROJ 2
-
-#define OP_SETUP 0
-#define OP_MAIN 1
-#define OP_EXIT 2
-
-using namespace std;
+Tracker::Tracker() {}
 
 
-
-
-const string help_setup = "-HELP SETUP-\n\
-navigate the window around to capture your hand. \n\
-1) Use ARROW keys to move the window to suit the position of your hand. \n\
-3) Use '-' to shrink and '=' to expand the window. \n\
-2) Ensure that your entire hand lies within then blue window and it covers the \n\
-green window entirely and press ENTER. \n\
-3) Press ESC to exit. \n\n";
-
-void setup(cv::VideoCapture& stream) {
-	cv::Mat imgOriginal, hist, imgHSV, backproj, foreground;
-	CenteredRect tw;
-	
-	cv::Ptr<cv::BackgroundSubtractor> bg =
-		cv::createBackgroundSubtractorMOG2(1500, 16, false);
-
-	int operation_mode = OP_SETUP;
-	int display_mode = DISPLAY_BGR;
-
-	// default size and position of window
-	cv::Point pos = cv::Point(100.0, 200.0);
-	cv::Size size = cv::Size(100, 200);
-	Window w = Window(pos, size);
-	cout << help_setup << endl;
-	// frame capture loop
-	while (stream.isOpened() && operation_mode != OP_EXIT) {
-		if (!stream.read(imgOriginal) || imgOriginal.empty()) {
-			throw FailedToRead("FAILURE: cannot read image/frame.");
-			return;
-		}
-		cv::flip(imgOriginal, imgOriginal, 1); // flips the frame to mirrror movement
-		cv::cvtColor(imgOriginal, imgHSV, cv::COLOR_BGR2HSV);
-
-		int delta = size.width / 4.0; // unit change in position.
-		int keyPress = cv::waitKey(1);		// delay (in ms) and get key press, if anychar
-
-		if (operation_mode == OP_SETUP)
-		{
-			switch (keyPress)
-			{
-			case LEFT_KEY:
-				w.move(cv::Point(-delta, 0)); // move left
-				break;
-			case RIGHT_KEY:
-				w.move(cv::Point(delta, 0)); // move left
-				break;
-			case UP_KEY:
-				w.move(cv::Point(0, -delta)); // move left
-				break;
-			case DOWN_KEY:
-				w.move(cv::Point(0, delta)); // move left
-				break;
-			case '=':
-				w.scale(1.1);
-				break;
-			case '-':
-				w.scale(0.9);
-				break;
-			case 's':
-				if (!hist.empty()) operation_mode = OP_MAIN;
-				tw = w.outer;
-				break;
-			case 13:
-				hist = w.histogram(imgOriginal);
-				break;
-			case 27:
-				operation_mode = OP_EXIT;
-				break;
-			}
-			w.draw(imgOriginal);
-		}
-
-		else if (operation_mode == OP_MAIN) {
-			if (hist.empty()) {
-				operation_mode = OP_SETUP;
-				cout << "Error: histogram not found, please redo the setup." << endl;
-				continue;
-			}
-
-			bg->apply(imgOriginal, foreground, 0.002);
-			backproj = back_project(imgHSV, hist);
-			double alpha = 0.5;
-			cv::addWeighted(backproj, alpha, foreground, 1 - alpha, 0.0, backproj);
-
-			cv::RotatedRect rtw = cv::CamShift(backproj, tw, 
-				cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 10, 1));
-
-			if (tw.area() <= 1)
-			{
-				// recreate the box around the tracked point.
-				int cols = backproj.cols, rows = backproj.rows, r = (MIN(cols, rows) + 5) / 6;
-				tw = CenteredRect(cv::Point(tw.x - r, tw.y - r), cv::Point(tw.x + r, tw.y + r));
-			}
-
-			tw.enlarge(tw.center(), 1.2);
-			cv::rectangle(imgOriginal, tw, cv::Scalar(255, 0, 0), 1);
-	
-			
-
-			
-
-			switch (keyPress)
-			{
-			case 'r':
-				operation_mode = OP_SETUP;
-				break;
-			case 'c':
-				cv::imwrite("screencap_rgb.jpg", imgOriginal);
-				cv::imwrite("screencap_hsv.jpg", imgHSV);
-				break;
-			case 27:
-				operation_mode = OP_EXIT;
-				break;
-			}
-
-			cv::namedWindow("Back Project", CV_WINDOW_AUTOSIZE);
-			cv::imshow("Back Project", backproj);		// show windows
-
-		}
-
-		// display the window
-		cv::namedWindow("Tracker", CV_WINDOW_AUTOSIZE);
-		cv::imshow("Tracker", imgOriginal);		// show windows
-	}
-	cout << "Exiting tracker!" << endl;
-	cv::destroyAllWindows();
+Tracker::Tracker(CenteredRect& initial_window, cv::MatND& hist_model, BackgroundSubtractor& bg, double alpha)
+	: bg(bg), hist_model(hist_model), alpha(alpha), beta(1-alpha), tracking_window(initial_window)
+{
+	tracking_window_fitted = cv::RotatedRect(tracking_window.center(), tracking_window.size(), 0.0);
 }
 
+
+void Tracker::process_frame(cv::Mat& input_BGR, cv::Mat& input_HSV, cv::Mat& output_foreground,
+	cv::Mat& output_backproj, cv::Mat& output)
+{
+	bg.apply_frame(input_BGR, output_foreground, 0);
+	output_backproj = back_project(input_HSV, hist_model);
+	cv::addWeighted(output_backproj, alpha, output_foreground, beta, 0.0, output);
+
+
+
+	tracking_window_fitted = cv::CamShift(output_backproj, tracking_window,
+		cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 5, 1));
+
+	if (tracking_window.area() <= 1)
+	{
+		// recreate the box around the tracked point.
+		int cols = output_backproj.cols, rows = output_backproj.rows, r = (MIN(cols, rows) + 5) / 6;
+		tracking_window = CenteredRect(cv::Point(tracking_window.x - r, tracking_window.y - r),
+			cv::Point(tracking_window.x + r, tracking_window.y + r));
+	}
+	CenteredRect roi = CenteredRect(tracking_window);
+	
+	// region of interest tracks the palm center enlarge inorder to include the fingers
+	roi.enlarge(roi.center() + cv::Point(0, roi.size().height / 2), 1.8);
+
+
+
+	hand_processer.apply(input_BGR, output, roi, tracking_window_fitted);
+	classifier.apply(hand_processer.fingers, hand_processer.center, hand_processer.radius);
+	
+	//classifier.printState();
+
+
+	bg.apply_frame(input_BGR, output, 0.04, hand_processer.contour);
+	
+
+	if (tracking_window_fitted.size.area() > hand_processer.roi.size.area())
+	{
+		tracking_window = tracking_window & hand_processer.roi.boundingRect();
+	}
+
+
+	hand_processer.display();
+	
+
+}
+
+void Tracker::set_window(CenteredRect& window)
+{
+	tracking_window = window;
+}
+
+
+void Tracker::set_alpha(double alpha)
+{
+	this->alpha = alpha;
+	this->beta = 1 - alpha;
+}
+
+
+
+cv::Mat threshold(cv::Mat& src, CenteredRect& mask)
+{
+	cv::Mat roi, tempMask = cv::Mat::zeros(src.size().height, src.size().width, CV_8U);
+	cv::Rect rmask = (cv::Rect) mask & cv::Rect(cv::Point(0, 0), src.size());
+
+	tempMask(rmask) = 255;
+
+	cv::bitwise_and(src, tempMask, roi);
+
+
+
+
+	cv::GaussianBlur(roi, roi, cv::Size(3, 3), 0, 0);
+
+	cv::threshold(roi, roi, 25, 255, cv::THRESH_BINARY);
+	cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(8, 8));
+
+	cv::erode(roi, roi, element);
+	cv::dilate(roi, roi, element);
+
+
+	return roi;
+}
 

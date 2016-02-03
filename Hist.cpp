@@ -36,12 +36,6 @@ cv::MatND get_hist(cv::Mat& img, cv::Mat& mask)
 
 	normalize(hist, hist, 0, 255, cv::NORM_MINMAX, -1, cv::Mat());
 
-	/// Get Backprojection
-	cv::MatND backproj;
-	calcBackProject(&hsv, 1, channels, hist, backproj, ranges, 1, true);
-
-	/// Draw the backproj
-	imshow("BackProj", backproj);
 	return hist;
 }
 

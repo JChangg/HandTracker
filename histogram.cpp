@@ -97,7 +97,4 @@ void Hist_and_Backproj()
 	MatND backproj;
 	calcBackProject(&hsv, 1, channels, hist, backproj, ranges, 1, true);
 
-	/// Draw the backproj
-	imshow("BackProj", backproj);
-
 }

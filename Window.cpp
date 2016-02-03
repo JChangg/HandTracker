@@ -19,6 +19,10 @@ CenteredRect::CenteredRect(int x, int y, int width, int height) :
 
 CenteredRect::CenteredRect(cv::Point& tl, cv::Point& br) : cv::Rect(tl, br) {}
 
+
+CenteredRect::CenteredRect(cv::Rect& rect) : cv::Rect(rect) {}
+
+
 cv::Point CenteredRect::center() 
 {
 	return cv::Point(x + width / 2.0, y + height / 2.0);
@@ -39,6 +43,9 @@ void CenteredRect::enlarge(cv::Point pt, double factor)
 
 
 }
+
+
+
 
 
 
@@ -72,6 +79,7 @@ Window::Window(CenteredRect& inner, CenteredRect& outer) :inner(inner), outer(ou
 
 void Window::draw(cv::Mat& img)
 {
+	
 	cv::rectangle(img, outer, cv::Scalar(255, 0, 0), 1);
 	cv::rectangle(img, inner, cv::Scalar(0, 255, 0), 1);
 }
@@ -93,17 +101,17 @@ void Window::scale(double factor)
 
 cv::MatND Window::histogram(cv::Mat img)
 {
-	cv::Mat sample(img, outer);
+	cv::Rect imgDim = cv::Rect(0, 0, img.cols, img.rows);
+	cv::Mat sample(img, (cv::Rect) outer & imgDim);
+	cv::Rect imgInn = (cv::Rect) inner & imgDim;
 	cv::Point newOrigin = outer.tl();
-	cv::Point tl = inner.tl() - newOrigin;
-	cv::Point br = inner.br() - newOrigin;
+	cv::Point tl = imgInn.tl() - newOrigin;
+	cv::Point br = imgInn.br() - newOrigin;
 	cv::Mat mask = cv::Mat::zeros(sample.size(), CV_8UC1);
 	for (cv::Point pt : randPoints(tl, br, 10))
 	{
 		cv::bitwise_or(flood_fill(sample, pt, 20, 24), mask, mask);
 	}
-	cv::namedWindow("mask", CV_WINDOW_AUTOSIZE);
-	cv::imshow("mask", mask);
 
 	cv::MatND hist = get_hist(sample, mask);
 	

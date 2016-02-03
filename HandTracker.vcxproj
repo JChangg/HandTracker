@@ -88,9 +88,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>C:\Users\Jamie\Documents\glew-1.13.0\include;C:\Users\Jamie\Documents\freeglut\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>opencv_world310d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_world310d.lib;freeglut.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\Jamie\Documents\glew-1.13.0\lib\Release\x64;C:\Users\Jamie\Documents\freeglut\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -121,19 +123,22 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Background.cpp" />
+    <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Hist.cpp" />
-    <ClCompile Include="histogram.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Shape.cpp" />
-    <ClCompile Include="Window.cpp" />
+    <ClCompile Include="Contour.cpp" />
+    <ClCompile Include="Recognition.cpp" />
     <ClCompile Include="Tracker.cpp" />
+    <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Background.h" />
+    <ClInclude Include="Graphics.h" />
     <ClInclude Include="Hist.h" />
-    <ClInclude Include="Shape.h" />
-    <ClInclude Include="Window.h" />
+    <ClInclude Include="Contour.h" />
+    <ClInclude Include="Recognition.h" />
     <ClInclude Include="Tracker.h" />
+    <ClInclude Include="Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

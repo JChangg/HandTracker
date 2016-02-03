@@ -30,7 +30,8 @@ public:
 	CenteredRect(int x, int y, int width, int height);
 	CenteredRect(cv::Point& center, cv::Size& dim);
 	CenteredRect(cv::Point& tl, cv::Point& br);
-	
+	CenteredRect(cv::Rect& rect);
+
 	void enlarge(cv::Point pt, double factor);
 	cv::Point center();
 };
