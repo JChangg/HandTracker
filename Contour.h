@@ -13,8 +13,9 @@ private:
 	cv::RotatedRect proposed_roi;
 	cv::Mat frame;
 	cv::Mat threshedimg;
+	vector<cv::Vec4i> defects;
 
-	cv::Point Analysis::find_center(cv::Point proposed_center, int width, int delta, int delta2);
+	cv::Point Analysis::find_center();
 
 	void threshold(cv::Mat& probImg, CenteredRect& mask);
 	void handStructure();
@@ -23,6 +24,7 @@ private:
 public:
 	vector<cv::Point> contour;
 	vector<cv::Point> fingers;
+
 	cv::RotatedRect roi;
 	cv::Point center;
 	double radius;

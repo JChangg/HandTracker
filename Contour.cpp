@@ -47,40 +47,16 @@ bool kcurvature(vector<cv::Point>& contour, int index, int k_value)
 
 
 
-cv::Point Analysis::find_center(cv::Point proposed_center, int width, int delta, int delta2)
+cv::Point Analysis::find_center()
 {
-	cv::Point start = cv::Point(proposed_center.x - width / 2, proposed_center.y - width / 2);
-
-	double max_min_distance = 0;
-	cv::Point new_center(proposed_center);
-
-	for (int h = 0; h < width; h+=delta2)
-	{
-		for (int w = 0; w < width; w+= delta2)
-		{
-			cv::Point pt = start + cv::Point(w, h);
-			double min_distance = -1;
-			for (int i = 0; i < contour.size(); i += delta)
-			{
-				double distance = dist(pt, contour[i]);
-
-				if (min_distance < 0 || min_distance > distance)
-					min_distance = distance;
-			}
-
-			if (min_distance > max_min_distance)
-			{
-				new_center = pt;
-				max_min_distance = min_distance;
-			}
-		}
-	}
-	
-	cv::circle(frame, new_center, max_min_distance, CV_RGB(255, 0, 0), 2);
-	radius = max_min_distance;
-	return new_center;
+	cv::Mat dist;
+	cv::distanceTransform(threshedimg, dist, CV_DIST_L2, 5, CV_32F);
+	cv::Moments m = cv::moments(dist);
+	cv::Point center = cv::Point(m.m10 / m.m00, m.m01 / m.m00);
+	radius = dist.at<float>(center);
+	cv::circle(frame, center, radius, CV_RGB(255, 0, 255), 2, 8, 0);
+	return center;
 }
-
 
 vector<cv::Point> contourClustering(vector<cv::Point> contour, list<int> potential_indices)
 {
@@ -147,15 +123,13 @@ void Analysis::threshold(cv::Mat& probImg, CenteredRect& mask)
 
 
 
-	cv::GaussianBlur(threshedimg, threshedimg, cv::Size(3, 3), 0, 0);
+	cv::GaussianBlur(threshedimg, threshedimg, cv::Size(5, 5), 0, 0);
 
 	cv::threshold(threshedimg, threshedimg, 25, 255, cv::THRESH_BINARY);
 	cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(8, 8));
 
 	cv::erode(threshedimg, threshedimg, element);
 	cv::dilate(threshedimg, threshedimg, element);
-
-
 }
 
 
@@ -194,11 +168,11 @@ void Analysis::handStructure()
 
 	roi = cv::fitEllipse(hull);
 	
-	center = find_center(roi.center, roi.size.width / 2, 20, 5);
 
-	vector<cv::Vec4i>  defects(0);
+	defects = vector<cv::Vec4i>(0);
 	if (hull_indices.size() > 3) {
 		cv::convexityDefects(contours[max_index], hull_indices, defects);
+		center = find_center();
 		condefects(defects);
 	}
 
@@ -248,7 +222,7 @@ void Analysis::condefects(vector<cv::Vec4i> convexityDefectsSet)
 
 	for (cv::Point tip : potential)
 	{
-		if (dist(tip, center) > 1.5 * radius)
+		if (dist(tip, center) > 2 * radius)
 		{
 			if (tip.y < center.y + radius)
 			{

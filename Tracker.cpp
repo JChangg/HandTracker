@@ -33,17 +33,15 @@ void Tracker::process_frame(cv::Mat& input_BGR, cv::Mat& input_HSV, cv::Mat& out
 	CenteredRect roi = CenteredRect(tracking_window);
 	
 	// region of interest tracks the palm center enlarge inorder to include the fingers
-	roi.enlarge(roi.center() + cv::Point(0, roi.size().height / 2), 1.8);
+	roi.enlarge(roi.center() + cv::Point(0, roi.size().height / 2), 2);
 
-
+	cv::rectangle(input_BGR, roi, CV_RGB(255, 255, 0), 1);
 
 	hand_processer.apply(input_BGR, output, roi, tracking_window_fitted);
 	classifier.apply(hand_processer.fingers, hand_processer.center, hand_processer.radius);
 	
-	//classifier.printState();
 
-
-	bg.apply_frame(input_BGR, output, 0.04, hand_processer.contour);
+	bg.apply_frame(input_BGR, output, 0.05, hand_processer.contour);
 	
 
 	if (tracking_window_fitted.size.area() > hand_processer.roi.size.area())
@@ -69,29 +67,4 @@ void Tracker::set_alpha(double alpha)
 	this->beta = 1 - alpha;
 }
 
-
-
-cv::Mat threshold(cv::Mat& src, CenteredRect& mask)
-{
-	cv::Mat roi, tempMask = cv::Mat::zeros(src.size().height, src.size().width, CV_8U);
-	cv::Rect rmask = (cv::Rect) mask & cv::Rect(cv::Point(0, 0), src.size());
-
-	tempMask(rmask) = 255;
-
-	cv::bitwise_and(src, tempMask, roi);
-
-
-
-
-	cv::GaussianBlur(roi, roi, cv::Size(3, 3), 0, 0);
-
-	cv::threshold(roi, roi, 25, 255, cv::THRESH_BINARY);
-	cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(8, 8));
-
-	cv::erode(roi, roi, element);
-	cv::dilate(roi, roi, element);
-
-
-	return roi;
-}
 
