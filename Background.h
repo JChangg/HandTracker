@@ -12,6 +12,7 @@ public:
 	BackgroundSubtractor();
 	BackgroundSubtractor(int history, double varThreshold);
 	void apply_frame(cv::Mat& img, cv::Mat& foreground, double learningRate);
+	void apply_frame(cv::Mat& img, cv::Mat& foreground, double learningRate, cv::Mat mask);
 	void apply_frame(cv::Mat& img, cv::Mat& foreground, double learningRate, cv::Rect exclude);
 	void apply_frame(cv::Mat& img, cv::Mat& foreground, double learningRate, std::vector<cv::Point> contour);
 	~BackgroundSubtractor();

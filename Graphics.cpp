@@ -54,7 +54,16 @@ void graphics::move_cube(cv::Point pt)
 	cube_y = cursor_y + delta_y;
 }
 
-volatile void graphics::move_cursor(cv::Point& pt)
+void graphics::update_cube_position()
+{
+	if (cube_grabbed)
+	{
+		cube_x = cursor_x;
+		cube_y = cursor_y;
+	}
+}
+
+void graphics::move_cursor(cv::Point& pt)
 {
 	cursor_x = translate_x(pt);
 	cursor_y = translate_y(pt);
@@ -63,13 +72,12 @@ volatile void graphics::move_cursor(cv::Point& pt)
 
 void graphics::rescale(double s)
 {
-
+	scale = s;
 }
 
 
 
-/* One face per line */
-GLfloat		vertices[] =
+GLfloat	vertices[] =
 {
 	-0.2, -0.2, -0.2,   -0.2, -0.2,  0.2,   -0.2,  0.2,  0.2,   -0.2,  0.2, -0.2,
 	0.2, -0.2, -0.2,    0.2, -0.2,  0.2,    0.2,  0.2,  0.2,    0.2,  0.2, -0.2,
@@ -79,14 +87,14 @@ GLfloat		vertices[] =
 	-0.2, -0.2,  0.2,   -0.2,  0.2,  0.2,    0.2,  0.2,  0.2,    0.2, -0.2,  0.2
 };
 
-GLfloat		colors[] =
+GLfloat	colors[] =
 {
-	0, 0, 0,   0, 0, 1,   0, 1, 1,   0, 1, 0,
-	1, 0, 0,   1, 0, 1,   1, 1, 1,   1, 1, 0,
-	0, 0, 0,   0, 0, 1,   1, 0, 1,   1, 0, 0,
-	0, 1, 0,   0, 1, 1,   1, 1, 1,   1, 1, 0,
-	0, 0, 0,   0, 1, 0,   1, 1, 0,   1, 0, 0,
-	0, 0, 1,   0, 1, 1,   1, 1, 1,   1, 0, 1
+	1, 1, 1,	1, 1, 1,	1, 1, 1,	1, 1, 1,
+	1, 0, 0,	1, 0, 0,	1, 0, 0,	1, 0, 0,
+	0, 1, 0,	0, 1, 0,	0, 1, 0,	0, 1, 0,
+	0, 0, 1,	0, 0, 1,	0, 0, 1,	0, 0, 1,
+	1, 0.5, 0, 	1, 0.5, 0,	1, 0.5, 0,	1, 0.5, 0,
+	1, 1, 0, 	1, 1, 0,	1, 1, 0,	1, 1, 0
 };
 
 

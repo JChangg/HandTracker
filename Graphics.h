@@ -24,11 +24,11 @@ namespace graphics
 
 	void move_cube(cv::Point pt);
 
-	volatile void move_cursor(cv::Point& pt);
+	void update_cube_position();
+
+	void move_cursor(cv::Point& pt);
 
 	void rescale(double s);
-
-
 
 	void gl_setup(int argc, char ** argv);
 

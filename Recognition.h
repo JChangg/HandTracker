@@ -6,6 +6,7 @@
 #include<iostream>
 #include<math.h>
 #include<string>
+#include"Analysis.h"
 #include"Graphics.h"
 
 enum State
@@ -15,6 +16,15 @@ enum State
 
 
 
+enum StaticState
+{
+	OPEN, CLOSED, SCROLL, PINCH, POINTER
+};
+
+enum MoveState
+{
+	MOVE, STATION, START
+};
 
 class Classifier
 {
@@ -31,8 +41,31 @@ public:
 
 
 	void apply(std::vector<cv::Point> tips, cv::Point center, double radius);
+
 		
 	void printState();
+};
+
+
+class StateClassifier
+{
+private:
+	HandAnalysis hand_analyser;
+	cv::Point center;
+	double radius;
+	double current_value;
+	double original_value;
+	inline bool update_center();
+	void update_move_state();
+public:
+	StaticState stat;
+	MoveState dynamic;
+	StateClassifier();
+	StateClassifier(HandAnalysis &h);
+	void apply(HandAnalysis& hand);
+	StaticState getStaticState();
+	void printState();
+
 };
 
 #endif // !RECOGN_H

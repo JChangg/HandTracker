@@ -126,7 +126,7 @@
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Hist.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Contour.cpp" />
+    <ClCompile Include="Analysis.cpp" />
     <ClCompile Include="Recognition.cpp" />
     <ClCompile Include="Tracker.cpp" />
     <ClCompile Include="Window.cpp" />
@@ -135,7 +135,7 @@
     <ClInclude Include="Background.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="Hist.h" />
-    <ClInclude Include="Contour.h" />
+    <ClInclude Include="Analysis.h" />
     <ClInclude Include="Recognition.h" />
     <ClInclude Include="Tracker.h" />
     <ClInclude Include="Window.h" />

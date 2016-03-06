@@ -44,4 +44,18 @@ void BackgroundSubtractor::apply_frame(cv::Mat& img, cv::Mat& foreground, double
 	else bg->apply(img, foreground, learningRate);
 }
 
-BackgroundSubtractor::~BackgroundSubtractor(){}
+void BackgroundSubtractor::apply_frame(cv::Mat& img, cv::Mat& foreground, double learningRate, cv::Mat mask)
+{
+	if (learningRate != 0)
+	{
+		cv::Mat background, img2;
+		bg->getBackgroundImage(background);
+		img.copyTo(img2);
+		background.copyTo(img2, mask);
+		bg->apply(img2, foreground, learningRate);
+	}
+	else bg->apply(img, foreground, learningRate);
+}
+
+
+BackgroundSubtractor::~BackgroundSubtractor() { bg.release(); }

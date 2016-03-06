@@ -1,12 +1,13 @@
 #include "Tracker.h"
 
-
 Tracker::Tracker() {}
 
 
 Tracker::Tracker(CenteredRect& initial_window, cv::MatND& hist_model, BackgroundSubtractor& bg, double alpha)
 	: bg(bg), hist_model(hist_model), alpha(alpha), beta(1-alpha), tracking_window(initial_window)
 {
+	hand_processer = HandAnalysis();
+	classifier = StateClassifier(hand_processer);
 	tracking_window_fitted = cv::RotatedRect(tracking_window.center(), tracking_window.size(), 0.0);
 }
 
@@ -16,43 +17,22 @@ void Tracker::process_frame(cv::Mat& input_BGR, cv::Mat& input_HSV, cv::Mat& out
 {
 	bg.apply_frame(input_BGR, output_foreground, 0);
 	output_backproj = back_project(input_HSV, hist_model);
+	cv::bitwise_and(output_backproj, output_foreground, output_backproj);
 	cv::addWeighted(output_backproj, alpha, output_foreground, beta, 0.0, output);
 
 
+	cv::meanShift(output_backproj, tracking_window, cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 10, 1));
 
-	tracking_window_fitted = cv::CamShift(output_backproj, tracking_window,
-		cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 5, 1));
 
-	if (tracking_window.area() <= 1)
-	{
-		// recreate the box around the tracked point.
-		int cols = output_backproj.cols, rows = output_backproj.rows, r = (MIN(cols, rows) + 5) / 6;
-		tracking_window = CenteredRect(cv::Point(tracking_window.x - r, tracking_window.y - r),
-			cv::Point(tracking_window.x + r, tracking_window.y + r));
-	}
-	CenteredRect roi = CenteredRect(tracking_window);
+	cv::rectangle(input_BGR, tracking_window, CV_RGB(255, 0, 255), 1);
+
+	hand_processer.apply(input_BGR, output, tracking_window);
 	
-	// region of interest tracks the palm center enlarge inorder to include the fingers
-	roi.enlarge(roi.center() + cv::Point(0, roi.size().height / 2), 2);
+	classifier.apply(hand_processer);
+	classifier.printState();
+	bg.apply_frame(input_BGR, output, 0.15, hand_processer.thresh);
 
-	cv::rectangle(input_BGR, roi, CV_RGB(255, 255, 0), 1);
-
-	hand_processer.apply(input_BGR, output, roi, tracking_window_fitted);
-	classifier.apply(hand_processer.fingers, hand_processer.center, hand_processer.radius);
-	
-
-	bg.apply_frame(input_BGR, output, 0.05, hand_processer.contour);
-	
-
-	if (tracking_window_fitted.size.area() > hand_processer.roi.size.area())
-	{
-		tracking_window = tracking_window & hand_processer.roi.boundingRect();
-	}
-
-
-	hand_processer.display();
-	
-
+	hand_processer.show();
 }
 
 void Tracker::set_window(CenteredRect& window)

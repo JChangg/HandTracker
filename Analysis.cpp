@@ -1,6 +1,5 @@
 #include"Analysis.h"
-#define SIN_60_DEG 0.8660254038 
-
+#include<thread>
 
 inline float dist(cv::Point& p, cv::Point& q) 
 {
@@ -31,45 +30,17 @@ inline bool lessThan120(cv::Point& p1, cv::Point& p2, cv::Point& q)
 }
 
 
-std::vector<cv::Point> circle_sample_pts(cv::Point center, double radius)
+inline double cosine_angle(cv::Point& v1, cv::Point& v2)
 {
-	std::vector<cv::Point> pts(0);
-	pts.push_back(center + (cv::Point(0, 1) * radius));
-	pts.push_back(center + (cv::Point(1, 0) * radius));
-	pts.push_back(center + (cv::Point(0, -1) * radius));
-	pts.push_back(center + (cv::Point(-1, 0) * radius));
-	pts.push_back(center + cv::Point(SIN_60_DEG * radius, 0.5 * radius));
-	pts.push_back(center + cv::Point(SIN_60_DEG * radius, -0.5 * radius));
-	pts.push_back(center + cv::Point(-SIN_60_DEG * radius, 0.5 * radius));
-	pts.push_back(center + cv::Point(-SIN_60_DEG * radius, -0.5 * radius));
-	pts.push_back(center + cv::Point(0.5 * radius, SIN_60_DEG * radius));
-	pts.push_back(center + cv::Point(0.5 * radius, -SIN_60_DEG * radius));
-	pts.push_back(center + cv::Point(-0.5 * radius, SIN_60_DEG * radius));
-	pts.push_back(center + cv::Point(-0.5 * radius, -SIN_60_DEG * radius));
-	return pts;
+	return v1.ddot(v2) / cv::norm(v1) / cv::norm(v2);
 }
 
-
-
-
-int max_Point(std::vector<cv::Point> pts, cv::Mat& img)
+inline double cosine_angle(cv::Point& p1, cv::Point& p2, cv::Point& q)
 {
-	int maxIdx = -1;
-	float max = 0.0;
-	for (int i = 0; i < pts.size(); i ++)
-	{
-		cv::Point pt = pts[i];
-		float intensity = img.at<float>(pt);
-		if (intensity > max)
-		{
-			max = intensity;
-			maxIdx = i;
-		}
-
-	}
-	return maxIdx;
+	cv::Point v1 = p1 - q;
+	cv::Point v2 = p2 - q;
+	return cosine_angle(v1, v2);
 }
-
 
 bool kcurvature(vector<cv::Point>& contour, int index, int k_value)
 {
@@ -82,36 +53,32 @@ bool kcurvature(vector<cv::Point>& contour, int index, int k_value)
 }
 
 
-
-cv::Point Analysis::find_center(cv::Rect& region)
+inline int point_above_line(cv::Point l1, cv::Point l2, cv::Point pt)
 {
-	cv::Mat dist = cv::Mat::zeros(frame.size(), CV_32F);
-	cv::distanceTransform(threshedimg(bounding_box), dist(bounding_box), CV_DIST_L2, 3, CV_32F);
-
-	cv::Moments m = cv::moments(dist(region));
-	cv::Point center = cv::Point(m.m10 / m.m00, m.m01 / m.m00);
-	center += region.tl();
-	radius = dist.at<float>(center);
-	std::vector<cv::Point> pts = circle_sample_pts(center, radius * 2);
-
-	cv::Point wrist = pts[max_Point(pts, dist)];
-	cv::circle(frame, wrist, 5, CV_RGB(0, 0, 255), -1);
-	return center;
+	double d = (pt.x - l1.x)*(l2.y - l1.y) - (pt.y - l1.y)*(l2.x - l1.x);
+	if (d > 0) return 1;
+	else if (d < 0) return -1;
+	else return  0;
 }
 
 
-cv::Point Analysis::find_center()
+inline int point_above_line_v2(cv::Point point_on_line, cv::Point direction, cv::Point point)
 {
-	cv::Mat dist;
-	
-	cv::distanceTransform(threshedimg(bounding_box), dist, CV_DIST_L2, 3, CV_32F);
-	cv::Moments m = cv::moments(dist);
-	cv::Point center = cv::Point(m.m10 / m.m00, m.m01 / m.m00);
-	radius = dist.at<float>(center);
+	cv::Point l1 = point_on_line - 10 * direction;
+	cv::Point l2 = point_on_line + 10 * direction;
+	return point_above_line(l1, l2, point);
+}
+
+inline bool point_above_wrist(cv::Point& wrist, cv::Point& center, cv::Point& pt)
+{
+	return isAcute(pt, center, wrist);
+}
 
 
-	center += bounding_box.tl();
-	return center;
+inline cv::Point tangent(cv::Point p1, cv::Point p2)
+{
+	cv::Point temp = p2 - p1; 
+	return cv::Point(temp.y, -temp.x);
 }
 
 vector<cv::Point> contourClustering(vector<cv::Point> contour, list<int> potential_indices)
@@ -170,182 +137,33 @@ vector<cv::Point> contourClustering(vector<cv::Point> contour, list<int> potenti
 
 
 
-void Analysis::threshold(cv::Mat& probImg)
-{
-
-	cv::GaussianBlur(probImg, threshedimg, cv::Size(5, 5), 0, 0);
-
-	cv::threshold(threshedimg, threshedimg, 25, 255, cv::THRESH_BINARY);
-	cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(8, 8));
-
-	cv::erode(threshedimg, threshedimg, element);
-	cv::dilate(threshedimg, threshedimg, element);
-}
-
-
-
-
-
-void Analysis::threshold(cv::Mat& probImg, CenteredRect& mask)
-{
-	cv::Mat tempMask = cv::Mat::zeros(probImg.size().height, probImg.size().width, CV_8U);
-	bounding_box = mask & cv::Rect(cv::Point(0, 0), probImg.size());
-	cv::Rect rmask = (cv::Rect) bounding_box;
-
-	tempMask(rmask) = 255;
-
-	cv::bitwise_and(probImg, tempMask, threshedimg);
-
-
-
-	cv::GaussianBlur(threshedimg, threshedimg, cv::Size(5, 5), 0, 0);
-
-	cv::threshold(threshedimg, threshedimg, 25, 255, cv::THRESH_BINARY);
-	cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(8, 8));
-
-	cv::erode(threshedimg, threshedimg, element);
-	cv::dilate(threshedimg, threshedimg, element);
-}
-
-
-
-void Analysis::handStructure()
-{
-	vector<cv::Vec4i> hierarchy;
-	vector<vector<cv::Point> > contours(0);
-
-
-	cv::findContours(threshedimg, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
-
-	/// Find the convex hull,contours and defects for each contour
-
-	double max_area = 0.0;
-	int max_index = -1;
-	for (int i = 0; i < contours.size(); i++)
-	{
-		double a = contourArea(contours[i], false);  //  Find the area of contour
-		if (a > max_area)
-		{
-			cv::Rect area = cv::boundingRect(contours[i]);
-			if ((area & bounding_box).size().area() > bounding_box.size().area() / 2)
-			{
-				max_area = a;
-				max_index = i;                //Store the index of largest contour
-			}
-		}
-	}
-
-	contour = contours[max_index];
-
-
-	vector<int> hull_indices = vector<int>(0);
-	
-	cv::convexHull(cv::Mat(contour), hull_indices, false);
-
-
-	hull = vector<cv::Point>(hull_indices.size());
-	for (int i = 0; i < hull_indices.size(); i++)
-		hull[i] = contour[hull_indices[i]];
-
-	cv::Rect region = bounding_box;
-	roi = cv::fitEllipse(hull);
-	bounding_box = roi.boundingRect() & cv::Rect(cv::Point(0, 0), frame.size());;
-
-	threshedimg = cv::Mat::zeros(frame.size(), CV_8U);
-		cv::drawContours(threshedimg, contours, max_index, CV_RGB(255, 255, 255), -1);
-
-
-	defects = vector<cv::Vec4i>(0);
-	if (hull_indices.size() > 3) {
-		cv::convexityDefects(contours[max_index], hull_indices, defects);
-		center = find_center(region);
-		condefects(defects);
-	}
-
-
-}
-
-
-void Analysis::condefects(vector<cv::Vec4i> convexityDefectsSet)
-{
-	double limit = roi.size.width * 0.5;
-
-	vector<cv::Vec4i> filteredDefects(0);
-	list<int> fingerTipIndices(0);
-	for (cv::Vec4i def : convexityDefectsSet)
-	{
-		cv::Point start(contour[def.val[0]]);
-		cv::Point end(contour[def.val[1]]);
-		cv::Point far(contour[def.val[2]]);
-
-		double depth = def.val[3] / 256.0;
-		if (depth > radius/2) 
-			filteredDefects.push_back(def);
-		/*
-		double distance = dist(start, far) + dist(end, far);
-		if (distance > limit && distance < roi.size.width * 2)
-		{
-			if (lessThan120(start, end, far))
-				filteredDefects.push_back(def);
-		}*/
-	}
-
-	for (int i = 0; i < filteredDefects.size(); i++)
-	{
-		int size = contour.size();
-		cv::Vec4i current = filteredDefects[i];
-		if (kcurvature(contour, current.val[0], size / 25))
-			fingerTipIndices.push_back(current.val[0]);
-
-		if (kcurvature(contour, current.val[1], size / 25)) 
-			fingerTipIndices.push_back(current.val[1]);
-	}
-
-	fingerTipIndices.sort();
-	vector<cv::Point> potential(0);
-
-	potential = contourClustering(contour, fingerTipIndices);
-
-	// further remove false negatives
-	fingers = vector<cv::Point>(0);
-
-	for (cv::Point tip : potential)
-	{
-		if (dist(tip, center) > 1.8 * radius)
-			if (tip.y < center.y + radius)
-				fingers.push_back(tip);
-	}
-
-
-}
-
-
-
-Analysis::Analysis()
+HandAnalysis::HandAnalysis()
 {
 	contour = vector<cv::Point>(0);
 	fingers = vector<cv::Point>(0);
 	hull = vector<cv::Point>(0);
-
 }
 
 
-void Analysis::apply(cv::Mat &frame, cv::Mat &probImg, CenteredRect &bounds, cv::RotatedRect &roi)
+void HandAnalysis::apply(cv::Mat &frame, cv::Mat &probImg, CenteredRect &bounds)
 {
-	radius = 0.0;
-	bounding_box = bounds;
 	this->frame = frame;
-	threshold(probImg);
-	handStructure();
+	this->prob = probImg;
+	this->proposed_roi = bounds;
+	threshold(); // thresholds the probImg and assigns the new image to thresh.
+	max_contour();
+	// two processes can be parallelized.
+	std::thread threadA = std::thread(&HandAnalysis::find_center_orientation, this);
+	std::thread threadB = std::thread(&HandAnalysis::max_hull, this);
+	threadA.join();
+	threadB.join();
+	finger_tips();
+	//finger_tips2();
 
+	bounds = CenteredRect(center, cv::Size(radius * 2, radius * 2));
 }
 
-
-
-
-
-
-void Analysis::display()
+void HandAnalysis::show()
 {
 	if (contour.size() > 0)
 	{
@@ -361,16 +179,196 @@ void Analysis::display()
 		cv::circle(frame, center, 5, CV_RGB(255, 0, 255), 2);
 
 		cv::circle(frame, center, radius, CV_RGB(255, 0, 255), 2);
-
+		cv::line(frame, wrist, center, CV_RGB(255, 255, 0), 2);
 	}
 
+}
+
+void HandAnalysis::threshold()
+{
+	cv::GaussianBlur(prob, thresh, cv::Size(5, 5), 0, 0);
+
+	cv::threshold(thresh, thresh, 25, 255, cv::THRESH_BINARY);
+	cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(8, 8));
+
+	cv::erode(thresh, thresh, element);
+	cv::dilate(thresh, thresh, element);
+}
+
+void HandAnalysis::max_contour()
+{
+	vector<cv::Vec4i> hierarchy;
+	vector<vector<cv::Point> > contours(0);
+
+
+	cv::findContours(thresh, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
+
+	/// Find the convex hull,contours and defects for each contour
+
+	double max_area = 0.0;
+	int max_index = -1;
+	for (int i = 0; i < contours.size(); i++)
+	{
+		double a = contourArea(contours[i], false);  //  Find the area of contour
+		if (a > max_area)
+		{
+			max_area = a;
+			max_index = i;                //Store the index of largest contour
+
+		}
+	}
+
+	contour = contours[max_index];
+	bounding_box = cv::boundingRect(contour);
+	// update thresholded binary image with the maximum contour. 
+	thresh= cv::Mat::zeros(frame.size(), CV_8U);
+	cv::drawContours(thresh, contours, max_index, CV_RGB(255, 255, 255), -1);
+}
+
+
+void HandAnalysis::max_hull()
+{
+	hull_indices = vector<int>(0);
+
+	cv::convexHull(cv::Mat(contour), hull_indices, false);
+
+
+	hull = vector<cv::Point>(hull_indices.size());
+	for (int i = 0; i < hull_indices.size(); i++)
+		hull[i] = contour[hull_indices[i]];
+
+	if (hull_indices.size() > 3) {
+		defects = vector<cv::Vec4i>(0);
+		cv::convexityDefects(contour, hull_indices, defects);
+	}
+
+}
+
+
+void HandAnalysis::find_center()
+{
+	distTransform = cv::Mat::zeros(frame.size(), CV_32F);
+	cv::distanceTransform(thresh(bounding_box), distTransform(bounding_box), CV_DIST_L2, 3, CV_32F);
+	double a, b; cv::Point t;
+	cv::minMaxLoc(distTransform(proposed_roi), &a, &b, &t, &center);
+	center += proposed_roi.tl();
+	radius = distTransform.at<float>(center);
+
+	CenteredRect new_region = CenteredRect(center, cv::Size(radius * 2, radius * 2)) 
+		& cv::Rect(cv::Point(0,0), frame.size());
+	cv::Moments m = cv::moments(distTransform(new_region));
+	center = cv::Point(m.m10 / m.m00, m.m01 / m.m00) + new_region.tl();
+}
+
+
+void HandAnalysis::find_wrist()
+{
+	cv::Mat mask = cv::Mat::zeros(frame.size(), CV_32F);
+	cv::circle(mask, center, radius, CV_RGB(255, 255, 255), 1);
+	cv::rectangle(mask, cv::Rect(center - cv::Point(radius, radius), 
+		center + cv::Point(radius, 0)), CV_RGB(0, 0, 0), -1);
+
+	cv::bitwise_and(mask, distTransform, mask);
+
+	cv::Moments m = cv::moments(mask);
+	wrist = cv::Point(m.m10 / m.m00, m.m01 / m.m00);
+	cv::Point axis = center - wrist;
+	axis *= (radius / cv::norm(axis));
+	wrist = center - axis;
+}
+
+void HandAnalysis::find_center_orientation()
+{
+	find_center();
+	find_wrist();
+}
+
+
+
+void HandAnalysis::finger_tips()
+{
+	vector<cv::Vec4i> filteredDefects(0);
+	list<int> fingerTipIndices(0);
+	for (cv::Vec4i def : defects)
+	{
+		cv::Point start(contour[def.val[0]]);
+		cv::Point end(contour[def.val[1]]);
+		cv::Point far(contour[def.val[2]]);
+
+		double depth = def.val[3] / 256.0;
+		if (depth > radius / 2)
+			filteredDefects.push_back(def);
+	}
+
+	for (int i = 0; i < filteredDefects.size(); i++)
+	{
+		int size = contour.size();
+		cv::Vec4i current = filteredDefects[i];
+		if (kcurvature(contour, current.val[0], size / 25))
+			fingerTipIndices.push_back(current.val[0]);
+
+		if (kcurvature(contour, current.val[1], size / 25))
+			fingerTipIndices.push_back(current.val[1]);
+	}
+
+	fingerTipIndices.sort();
+	vector<cv::Point> potential(0);
+
+	potential = contourClustering(contour, fingerTipIndices);
+
+	// further remove false negatives
+	fingers = vector<cv::Point>(0);
+	finger_dist = vector<double>(0);
+	finger_height = vector<double>(0);
+
+
+	cv::Point axis = (center - wrist) / radius;
+
+	for (cv::Point tip : potential)
+	{
+		double distance = dist(tip, center);
+		if (distance > 1.6 * radius && distance < 4 * radius)
+		{
+			double v_distance = axis.ddot(tip - wrist);
+			if (v_distance > 0)
+			{
+				finger_dist.push_back(distance);
+				finger_height.push_back(v_distance);
+				fingers.push_back(tip);
+			}
+		}
+	}
 
 }
 
 
 
+void HandAnalysis::finger_tips2()
+{
+	fingers = vector<cv::Point>(0);
+
+	cv::Point axis = (center - wrist) / radius;
+
+	for (int pt : hull_indices)
+	{
+		cv::Point tip = contour[pt];
+		double distance = dist(tip, center);
+		if (distance > 1.6 * radius && distance < 4 * radius)
+		{
+			double v_distance = axis.ddot(tip - wrist);
+			if (v_distance > 0)
+			{
+				if (kcurvature(contour, pt, contour.size() / 25))
+				{
+					finger_dist.push_back(distance);
+					finger_height.push_back(v_distance);
+					fingers.push_back(tip);
+				}
+
+			}
+		}
+	}
 
 
-
-
+}
 

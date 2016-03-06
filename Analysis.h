@@ -6,38 +6,39 @@
 #include<algorithm>
 #include<list>
 
-class Analysis
+
+class HandAnalysis
 {
 private:
-	CenteredRect bounding_box;
-	cv::RotatedRect proposed_roi;
-	vector<cv::Point> hull;
-	cv::Mat frame;
-	cv::Mat threshedimg;
-	vector<cv::Vec4i> defects;
+	cv::Mat distTransform;	//distance transform of binary image.
 
-	cv::Point find_center();
-	cv::Point find_center(cv::Rect& region);
+	CenteredRect bounding_box; //bounding box.
+	vector<cv::Point> hull, contour; 
+	vector<int> hull_indices;
+	vector<cv::Vec4i> defects; // this is the indices of the defect points. 
+	vector<double> finger_dist;
 
-	void threshold(cv::Mat& probImg);
-	void threshold(cv::Mat& probImg, CenteredRect& mask);
-	void handStructure();
-	void condefects(vector<cv::Vec4i> convexityDefectsSet);
-
+	void threshold();
+	void max_contour();
+	void max_hull();
+	void find_center();
+	void find_wrist();
+	void find_center_orientation();
+	void finger_tips();
+	void finger_tips2();
 public:
-	vector<cv::Point> contour;
+	CenteredRect proposed_roi; //region as indicated by the meanshift algorithm. 
 	vector<cv::Point> fingers;
-
-	cv::RotatedRect roi;
-	cv::Point center;
+	vector<double> finger_height;
+	cv::Point center, wrist;
 	double radius;
+	cv::Mat frame, prob, thresh;
 
-	Analysis();
-
-	void apply(cv::Mat &frame, cv::Mat &probImg, CenteredRect &bounds, cv::RotatedRect &roi);
-	void display();
-
+	HandAnalysis();
+	void apply(cv::Mat &frame, cv::Mat &probImg, CenteredRect &bounds);
+	void show();
 };
+
 
 
 #endif	//!ANALYSIS_H

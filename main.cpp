@@ -7,13 +7,14 @@
 #include<iostream>
 #include<string>
 #include<vector>
+#include<chrono>
+#include<fstream>
 #include"Hist.h"
 #include"Window.h"
-#include"Contour.h"
 #include"Background.h"
 #include"Tracker.h"
 #include"Graphics.h"
-
+	
 #define LEFT_KEY 2424832
 #define RIGHT_KEY 2555904
 #define UP_KEY 2490368
@@ -27,14 +28,21 @@
 #define OP_MAIN 1
 #define OP_EXIT 2
 
-#define DEFAULT_SIZE cv::Size(150, 300)
-#define DEFAULT_POSITION cv::Point(200, 200.0)
+#define DEFAULT_SIZE cv::Size(100, 200)
+#define DEFAULT_POSITION cv::Point(400, 200)
 
-#define INIT_BACK_SUB 100
+#define INIT_BACK_SUB 50
+
+
 
 int main(int argc, char ** argv)
 {
-	
+
+	long double start, end;					// timer
+	ofstream frames;
+	frames.open("frames.txt");
+
+
 	cv::VideoCapture stream(1);			// initialte stream from vidoe camera.
 
 	int operation_mode = OP_SETUP;
@@ -44,7 +52,7 @@ int main(int argc, char ** argv)
 	Window select_win = Window(DEFAULT_POSITION, DEFAULT_SIZE);	
 
 	// initiate Mixture of Gaussian background subtractor
-	BackgroundSubtractor bg = BackgroundSubtractor(1000, 16);
+	BackgroundSubtractor bg = BackgroundSubtractor(200, 24);
 	for (int j = 0; j < INIT_BACK_SUB && stream.isOpened() && stream.read(imgBGR); j++)
 	{
 		cv::flip(imgBGR, imgBGR, 1);						// flips the frame to mirrror movement
@@ -59,7 +67,7 @@ int main(int argc, char ** argv)
 
 	// frame capture loop
 	while (stream.isOpened() && operation_mode != OP_EXIT) {
-
+		auto start = chrono::system_clock::now();
 		// Set up frame here.
 		if (!stream.read(imgBGR) || imgBGR.empty()) {
 			throw FailedToRead("FAILURE: cannot read image/frame.");
@@ -97,7 +105,7 @@ int main(int argc, char ** argv)
 				select_win.scale(0.9);
 				break;
 			case ENTER_KEY:	
-				tracker = Tracker(select_win.outer, select_win.histogram(imgBGR), bg, 0.7);
+				tracker = Tracker(select_win.inner, select_win.histogram(imgBGR), bg, 0.7);
 				operation_mode = OP_MAIN;		// advance to tracking mode
 				break;
 			case ESC_KEY:
@@ -128,10 +136,15 @@ int main(int argc, char ** argv)
 		// display the window
 		cv::namedWindow("Tracker", CV_WINDOW_AUTOSIZE);
 		cv::imshow("Tracker", imgBGR); 
+		auto end = chrono::system_clock::now();
+		chrono::duration<double> diff = end - start;
+		frames.precision(17);
+		frames << diff.count() * 1000 << " ms" << endl;
 	}
 	cout << "Exiting tracker!" << endl;
 	cv::destroyAllWindows();
-								
+	
+	frames.close();
 	std::system("pause");
 	return 0;
 }

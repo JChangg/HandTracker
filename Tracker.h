@@ -11,7 +11,7 @@
 #include<vector>
 #include"Hist.h"
 #include"Window.h"
-#include"Contour.h"
+#include"Analysis.h"
 #include"Background.h"
 #include "Recognition.h"
 
@@ -20,8 +20,8 @@ class Tracker
 private:
 	CenteredRect tracking_window;
 	cv::RotatedRect tracking_window_fitted;
-	Analysis hand_processer = Analysis();
-	Classifier classifier = Classifier();
+	HandAnalysis hand_processer; 
+	StateClassifier classifier;
 public:
 	double alpha, beta;
 	BackgroundSubtractor bg;
@@ -41,6 +41,5 @@ public:
 };
 
 
-cv::Mat threshold(cv::Mat& src, CenteredRect& mask);
 
 #endif
