@@ -69,6 +69,15 @@ inline int point_above_line_v2(cv::Point point_on_line, cv::Point direction, cv:
 	return point_above_line(l1, l2, point);
 }
 
+inline double distance_from_line(cv::Point l1, cv::Point l2, cv::Point pt)
+{
+	cv::Point dir = l2 - l1;
+	dir /= cv::norm(dir);
+	cv::Point normal = cv::Point(-dir.x, dir.y);
+	return normal.ddot(pt - l1);
+}
+
+
 inline bool point_above_wrist(cv::Point& wrist, cv::Point& center, cv::Point& pt)
 {
 	return isAcute(pt, center, wrist);
@@ -189,7 +198,7 @@ void HandAnalysis::threshold()
 	cv::GaussianBlur(prob, thresh, cv::Size(5, 5), 0, 0);
 
 	cv::threshold(thresh, thresh, 25, 255, cv::THRESH_BINARY);
-	cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(8, 8));
+	cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(10, 10));
 
 	cv::erode(thresh, thresh, element);
 	cv::dilate(thresh, thresh, element);
@@ -207,23 +216,32 @@ void HandAnalysis::max_contour()
 
 	double max_area = 0.0;
 	int max_index = -1;
+	cv::Rect region, max_region;
 	for (int i = 0; i < contours.size(); i++)
 	{
 		double a = contourArea(contours[i], false);  //  Find the area of contour
 		if (a > max_area)
 		{
-			max_area = a;
-			max_index = i;                //Store the index of largest contour
-
+			region = cv::boundingRect(contours[i]);
+			if ((region & proposed_roi).area() > proposed_roi.area() * 0.8)
+			{
+				max_area = a;
+				max_index = i;                //Store the index of largest contour
+				max_region = region;
+			}
 		}
 	}
+
+	if (max_index == -1) throw std::exception("Lost hand!");
 
 	contour = contours[max_index];
 	bounding_box = cv::boundingRect(contour);
 	// update thresholded binary image with the maximum contour. 
-	thresh= cv::Mat::zeros(frame.size(), CV_8U);
+	thresh = cv::Mat::zeros(frame.size(), CV_8U);
 	cv::drawContours(thresh, contours, max_index, CV_RGB(255, 255, 255), -1);
 }
+
+
 
 
 void HandAnalysis::max_hull()
@@ -234,6 +252,18 @@ void HandAnalysis::max_hull()
 
 
 	hull = vector<cv::Point>(hull_indices.size());
+	
+	list<int> temp = list<int>();
+	
+	for (int i : hull_indices)
+		temp.push_back(i);
+
+	contourClustering(contour, temp);
+	hull_indices = vector<int>();
+
+	for (int i : temp)
+		hull_indices.push_back(i);
+
 	for (int i = 0; i < hull_indices.size(); i++)
 		hull[i] = contour[hull_indices[i]];
 
@@ -243,7 +273,6 @@ void HandAnalysis::max_hull()
 	}
 
 }
-
 
 void HandAnalysis::find_center()
 {

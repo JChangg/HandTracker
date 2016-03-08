@@ -7,93 +7,11 @@ inline float dist(cv::Point& p, cv::Point& q)
 }
 
 
-inline bool Classifier::updateCenter(cv::Point center)
-{
-	bool station = (dist(center, this->center) < radius * 0.2);
-	this->center = (center + this->center) / 2;
-
-	return station;
-}
-
-Classifier::Classifier()
-{
-	current = MOVE_OPEN_HAND;
-}
-
-void Classifier::apply(std::vector<cv::Point> tips, cv::Point center, double radius)
-{
-	this->radius = radius;
-
-	bool closed = tips.size() <= 1;
-	bool stationary = updateCenter(center);
-
-
-
-	switch (current)
-	{
-	case State::OPEN_HAND:
-		if (!stationary) current = State::MOVE_OPEN_HAND;
-		else if (closed) current = State::CLOSED_HAND;
-		break;
-	case State::MOVE_OPEN_HAND:
-		graphics::move_cursor(center);
-		if (stationary) current = State::OPEN_HAND;
-		break;
-	case State::CLOSED_HAND:
-		graphics::grab();
-		if (stationary && !closed)  current = State::OPEN_HAND;
-		else if (!stationary && !closed)
-		{
-			current = State::MOVE_OPEN_HAND;
-			graphics::ungrab();
-		}
-		else if (!stationary && closed) current = State::MOVE_CLOSED_HAND;
-		break;
-	case State::MOVE_CLOSED_HAND:
-		graphics::move_cube(center);
-		if (!closed) {
-			current = State::CLOSED_HAND;
-			graphics::ungrab();
-		}
-		else current = State::MOVE_CLOSED_HAND;
-		break;
-	default:
-		break;
-	}
-
-}
-
-
-void Classifier::printState()
-{
-	std::string s;
-	switch (current)
-	{
-	case State::OPEN_HAND:
-		s = "OPEN_HAND";
-		break;
-	case State::MOVE_OPEN_HAND:
-		s = "MOVE_OPEN_HAND";
-		break;
-	case State::CLOSED_HAND:
-		s = "CLOSED_HAND";
-		break;
-	case State::MOVE_CLOSED_HAND:
-		s = "MOVE_CLOSED_HAND";
-		break;
-	default:
-		break;
-	}
-
-	std::cout << s << std::endl;
-}
-
-
 
 
 inline bool StateClassifier::update_center()
 {
-	bool station = (dist(hand_analyser.center, this->center) < hand_analyser.radius * 0.2);
+	bool station = (dist(hand_analyser.center, this->center) < hand_analyser.radius * 0.1);
 	if (station) this->center = (hand_analyser.center + this->center) / 2;
 	else this->center = hand_analyser.center;
 	return station;
@@ -151,8 +69,7 @@ void StateClassifier::apply(HandAnalysis& hand)
 	{
 	case MoveState::MOVE:
 		// update position
-		graphics::move_cursor(center);
-		graphics::update_cube_position();
+		curser.position(center);
 		break;
 	case MoveState::STATION:
 		stat = getStaticState();
@@ -162,21 +79,22 @@ void StateClassifier::apply(HandAnalysis& hand)
 			{
 			case OPEN:
 				// do nothing
-				graphics::ungrab();
+				curser.grab(graphics::getcube(), false);
 				break;
 			case CLOSED:
-				graphics::grab();
+				curser.grab(graphics::getcube(), true);
 				break;
 			case SCROLL:
+				curser.grab(graphics::getcube(), false);
 				// scroll 
-				graphics::ungrab();
+			
 				break;
 			case PINCH:
-				graphics::ungrab();
-				original_value = current_value;
+				curser.grab(graphics::getcube(), false);
+				//original_value = current_value;
 				break;
 			case POINTER:
-				graphics::ungrab();
+				curser.grab(graphics::getcube(), false);
 				break;
 			}
 		}
@@ -193,7 +111,7 @@ void StateClassifier::apply(HandAnalysis& hand)
 				// scroll 
 				break;
 			case PINCH:
-				graphics::rescale(current_value / original_value);
+				//graphics::rescale(current_value / original_value);
 				break;
 			case POINTER:
 				break;
@@ -202,10 +120,9 @@ void StateClassifier::apply(HandAnalysis& hand)
 		break;
 	case MoveState::START:
 		// start static state movement.
-		graphics::move_cursor(center);
-		graphics::update_cube_position();
 		break;
 	}
+	
 }
 
 StaticState StateClassifier::getStaticState()

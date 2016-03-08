@@ -57,5 +57,10 @@ void BackgroundSubtractor::apply_frame(cv::Mat& img, cv::Mat& foreground, double
 	else bg->apply(img, foreground, learningRate);
 }
 
+void BackgroundSubtractor::getBackground(cv::Mat& background)
+{
+	bg->getBackgroundImage(background);
+}
+
 
 BackgroundSubtractor::~BackgroundSubtractor() { bg.release(); }

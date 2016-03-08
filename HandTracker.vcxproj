@@ -123,6 +123,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Background.cpp" />
+    <ClCompile Include="Demo.cpp" />
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Hist.cpp" />
     <ClCompile Include="main.cpp" />
@@ -133,10 +134,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Background.h" />
+    <ClInclude Include="Demo.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="Hist.h" />
     <ClInclude Include="Analysis.h" />
     <ClInclude Include="Recognition.h" />
+    <ClInclude Include="Settings.h" />
     <ClInclude Include="Tracker.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>

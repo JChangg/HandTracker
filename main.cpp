@@ -9,11 +9,13 @@
 #include<vector>
 #include<chrono>
 #include<fstream>
+#include<thread>
 #include"Hist.h"
 #include"Window.h"
 #include"Background.h"
 #include"Tracker.h"
-#include"Graphics.h"
+#include "Demo.h"
+//#include"Graphics.h"
 	
 #define LEFT_KEY 2424832
 #define RIGHT_KEY 2555904
@@ -33,7 +35,11 @@
 
 #define INIT_BACK_SUB 50
 
+////////////////////////////////////////////////////////
+#define HT_DISPLAY_DEMO true
 
+
+////////////////////////////////////////////////////////
 
 int main(int argc, char ** argv)
 {
@@ -55,14 +61,21 @@ int main(int argc, char ** argv)
 	BackgroundSubtractor bg = BackgroundSubtractor(200, 24);
 	for (int j = 0; j < INIT_BACK_SUB && stream.isOpened() && stream.read(imgBGR); j++)
 	{
+		cv::Mat bgImg;
 		cv::flip(imgBGR, imgBGR, 1);						// flips the frame to mirrror movement
 		bg.apply_frame(imgBGR, foreground, 0.5);
+		bg.getBackground(bgImg);
+		cv::imshow("Setting up Background...", bgImg);
+		int keypress = cv::waitKey(1);
 	}
 	
+	cv::destroyWindow("Setting up Background...");
 	Tracker tracker;
-	
-	std::thread t(graphics::gl_setup, argc, argv);
-	t.detach();
+	if (HT_DISPLAY_DEMO)
+	{
+		std::thread t(graphics::setup, argc, argv);
+		t.detach();
+	}
 
 
 	// frame capture loop

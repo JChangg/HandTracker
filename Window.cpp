@@ -46,6 +46,8 @@ void CenteredRect::enlarge(cv::Point pt, double factor)
 
 
 
+
+
 vector<cv::Point> randPoints(cv::Point tl, cv::Point br, int num)
 {
 	cv::RNG rng = cv::RNG();

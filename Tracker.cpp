@@ -1,5 +1,11 @@
 #include "Tracker.h"
 
+////////////////////////////////////////////////////////
+#define DISPLAY_CONTOUR_ANNOTATIONS true
+
+
+////////////////////////////////////////////////////////
+
 Tracker::Tracker() {}
 
 
@@ -23,17 +29,27 @@ void Tracker::process_frame(cv::Mat& input_BGR, cv::Mat& input_HSV, cv::Mat& out
 
 	cv::meanShift(output_backproj, tracking_window, cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 10, 1));
 
-
-	cv::rectangle(input_BGR, tracking_window, CV_RGB(255, 0, 255), 1);
-
 	hand_processer.apply(input_BGR, output, tracking_window);
+	cv::Mat mask = cv::Mat::zeros(input_HSV.size(), CV_8UC1);
+	cv::rectangle(mask, tracking_window, CV_RGB(255, 255, 255), -1);
+
+
+	hist_model = get_hist_hsv(input_HSV, mask);
 	
+
 	classifier.apply(hand_processer);
-	classifier.printState();
+	//classifier.printState();
 	bg.apply_frame(input_BGR, output, 0.15, hand_processer.thresh);
 
-	hand_processer.show();
+
+	if (DISPLAY_CONTOUR_ANNOTATIONS)
+	{
+		cv::rectangle(input_BGR, tracking_window, CV_RGB(255, 0, 255), 1);
+		hand_processer.show();
+	}
 }
+
+
 
 void Tracker::set_window(CenteredRect& window)
 {
@@ -46,5 +62,6 @@ void Tracker::set_alpha(double alpha)
 	this->alpha = alpha;
 	this->beta = 1 - alpha;
 }
+
 
 

@@ -10,6 +10,7 @@ using namespace std;
 
 cv::Mat flood_fill(cv::Mat& src, cv::Point seed, int lb, int ub);
 cv::MatND get_hist(cv::Mat& img, cv::Mat& mask);
+cv::MatND get_hist_hsv(cv::Mat& img, cv::Mat& mask);
 cv::MatND back_project(cv::Mat& hsv, cv::MatND& hist);
 
 #endif

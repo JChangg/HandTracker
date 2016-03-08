@@ -16,12 +16,34 @@ cv::Mat flood_fill(cv::Mat& src, cv::Point seed, int lb=20, int ub=20)
 }
 
 
+
+
 cv::MatND get_hist(cv::Mat& img, cv::Mat& mask)
 {
 	cv::MatND hist;
 	cv::Mat hsv;
 	cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
 
+	int h_bins = 30; int s_bins = 32;
+	int histSize[] = { h_bins, s_bins };
+
+	float h_range[] = { 0, 179 };
+	float s_range[] = { 0, 255 };
+	const float* ranges[] = { h_range, s_range };
+
+	int channels[] = { 0, 1 };
+
+	/// Get the Histogram and normalize it
+	calcHist(&hsv, 1, channels, mask, hist, 2, histSize, ranges, true, false);
+
+	normalize(hist, hist, 0, 255, cv::NORM_MINMAX, -1, cv::Mat());
+
+	return hist;
+}
+
+cv::MatND get_hist_hsv(cv::Mat & hsv, cv::Mat & mask)
+{
+	cv::MatND hist;
 	int h_bins = 30; int s_bins = 32;
 	int histSize[] = { h_bins, s_bins };
 

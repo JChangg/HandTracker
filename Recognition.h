@@ -7,12 +7,7 @@
 #include<math.h>
 #include<string>
 #include"Analysis.h"
-#include"Graphics.h"
-
-enum State
-{
-	OPEN_HAND, MOVE_OPEN_HAND, CLOSED_HAND, MOVE_CLOSED_HAND
-};
+#include"Demo.h"
 
 
 
@@ -26,25 +21,6 @@ enum MoveState
 	MOVE, STATION, START
 };
 
-class Classifier
-{
-private:
-	std::vector<cv::Point> tips;
-	double radius;
-	inline bool updateCenter(cv::Point center);
-
-public:
-	State current;
-	cv::Point center;
-
-	Classifier();
-
-
-	void apply(std::vector<cv::Point> tips, cv::Point center, double radius);
-
-		
-	void printState();
-};
 
 
 class StateClassifier

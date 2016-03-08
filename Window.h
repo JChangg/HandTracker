@@ -34,6 +34,7 @@ public:
 
 	void enlarge(cv::Point pt, double factor);
 	cv::Point center();
+
 };
 
 

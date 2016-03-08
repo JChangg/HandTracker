@@ -14,6 +14,7 @@
 #include"Analysis.h"
 #include"Background.h"
 #include "Recognition.h"
+#include "Hist.h"
 
 class Tracker
 {
@@ -38,6 +39,8 @@ public:
 
 	void process_frame(cv::Mat& input_BGR, cv::Mat& input_HSV, cv::Mat& output_foreground,
 		cv::Mat& output_backproj, cv::Mat& output);
+
+
 };
 
 
