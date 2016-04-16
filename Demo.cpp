@@ -5,21 +5,92 @@
 #define DEFAULT_HEIGHT 480
 #define DEFAULT_WIDTH 640
 
+
+class Position
+{
+public:
+	double x, y, z;
+	Position();
+	Position(double x, double y, double z);
+	void translate(cv::Point& pt, double depth);
+	Position operator+(Position other);
+	Position operator-(Position other);
+};
+
+
+class Cube
+{
+public:
+	cv::Point point;
+	Position coord;
+	Position rot_dir;
+
+	double size;
+	double size_scale = 1;
+	double angle = 0;
+	double angle_delta = 0;
+	double x_angle, y_angle, z_angle;
+	Cube();
+	void scale(double s);
+	void set_scale();
+	void rotate(cv::Point& pt);
+	void position(cv::Point& pt);
+	void draw();
+};
+
+class Curser
+{
+	Cube attached;
+public:
+	cv::Point point;
+	Position coord;
+	bool select, grabbed;
+	Curser();
+	void position(cv::Point& pt);
+	void grab(Cube& cube, bool grabber);
+	void draw();
+};
+
+inline double distance_sqred(Position p1, Position p2);
+void drawText();
+void drawDisk(GLfloat radius);
+void drawRing(GLfloat inner, GLfloat outer);
+void drawCubeOfCubes(GLfloat size);
+void display_each_frame(void);
+void reshape_on_resize(int w, int h);
+void enable_shader();
+
+//////////////////////////////////////////////////////////////////
+
+
+// Set up module level variables.
 int width = 640, height = 480;
-double fovy = 20;
+double fovy = 20; 
+StaticState state = StaticState::OPEN;
+graphics::cvParams parameters;
+Curser curser = Curser();
+Cube cube = Cube();
 
 
-graphics::Curser curser = graphics::Curser();
-graphics::Cube cube = graphics::Cube();
 
-
-inline double distance_sqred(graphics::Position p1, graphics::Position p2)
+inline double distance_sqred(Position p1, Position p2)
 {
 	double deltax = p1.x - p2.x;
 	double deltay = p1.y - p2.y;
 	return deltax * deltax + deltay * deltay;
 }
 
+
+void drawText()
+{
+	glColor3f(0, 1, 0);
+	std::string state_string = staticStateString(state);
+	const char *c = state_string.c_str();
+	glRasterPos3f(-2.3, 1.5, -10);
+	for (; *c != '\0'; c++) {
+		glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *c);
+	}
+}
 
 void drawDisk(GLfloat radius)
 {
@@ -67,10 +138,10 @@ void drawCubeOfCubes(GLfloat size)
 }
 
 
-graphics::Position::Position() : x(0), y(0), z(0) {}
-graphics::Position::Position(double x, double y, double z) : x(x), y(y), z(z) {}
+Position::Position() : x(0), y(0), z(0) {}
+Position::Position(double x, double y, double z) : x(x), y(y), z(z) {}
 
-void graphics::Position::translate(cv::Point& pt, double depth)
+void Position::translate(cv::Point& pt, double depth)
 {
 	double tanx = tan(fovy / 2.0 * width / double(height) * PI / 180.0);
 	double tany = tan(fovy / 2.0 * PI / 180.0);
@@ -78,25 +149,37 @@ void graphics::Position::translate(cv::Point& pt, double depth)
 	y = -(pt.y - 240.0) / (height/2.0) * tany * depth;
 }
 
+Position Position::operator+(Position other)
+{
+	Position p = Position(x + other.x, y + other.y, z + other.z);
+	return p;
+}
+
+Position Position::operator-(Position other)
+{
+	Position p = Position(x - other.x, y - other.y, z - other.z);
+	return p;
+}
 
 
 
-graphics::Curser::Curser() 
+
+Curser::Curser() 
 	: coord(Position(0, 0.45, -5)), select(false), grabbed(false){}
 
-void graphics::Curser::position(cv::Point& pt)
+void Curser::position(cv::Point& pt)
 {
 	point = pt;
 	coord.translate(pt, -coord.z);
 	if (select) cube.position(pt);
 }
 
-void graphics::Curser::grab(Cube& cube, bool grabber)
+void Curser::grab(Cube& cube, bool grabber)
 {
 	grabbed = grabber;
 	if (grabbed)
 	{
-		graphics::Position pos = this->coord;
+		Position pos = this->coord;
 		pos.translate(this->point, -cube.coord.z);
 		if (distance_sqred(pos, cube.coord) < cube.size / 2.0)
 		{
@@ -108,7 +191,7 @@ void graphics::Curser::grab(Cube& cube, bool grabber)
 	else select = false;
 }
 
-void graphics::Curser::draw()
+void Curser::draw()
 {
 	glPushMatrix();
 	glTranslatef(coord.x, coord.y, coord.z);
@@ -123,37 +206,54 @@ void graphics::Curser::draw()
 
 
 
-graphics::Cube::Cube() 
+Cube::Cube() 
 	: coord(Position(0, 0, -10)), size(0.5){}
 
-void graphics::Cube::scale(double s)
+void Cube::scale(double s)
 {
-	size = s;
+	size_scale = s;
 }
 
 
-void graphics::Cube::rotate(cv::Point& dir)
+void Cube::set_scale()
 {
-	
+	size = size_scale * size;
+	size_scale = 1.0;
 }
 
-void graphics::Cube::position(cv::Point& pt)
+
+void Cube::rotate(cv::Point& pt)
+{	
+	double sensitivity = 30;
+
+	Position pos = Position();
+	pos.translate(pt, -10);
+
+
+	x_angle = (pos.x * 20);
+	y_angle = (pos.y * 20);
+
+}
+
+void Cube::position(cv::Point& pt)
 {
 	coord.translate(pt, 10);
 	point = pt;
 }
 
-void graphics::Cube::draw()
+void Cube::draw()
 {
 	if (angle > 360) angle -= 360;
 	glColor3f(1, 0, 0);
 	glPushMatrix();
 	glTranslatef(coord.x, coord.y, -10);
-	glRotatef(45, 1, 0, 0);
-	glRotatef(angle, 0, 1, 0);
-	drawCubeOfCubes(size);	
+	glRotatef(x_angle, 0, -1, 0);
+	glRotatef(y_angle, 1, 0, 0);
+	glRotatef(z_angle, 0, 0, 1);
+	drawCubeOfCubes(size*size_scale);	
 	glPopMatrix();
-	angle += 0.01;
+	angle += angle_delta;
+	angle_delta = 0;
 }
 
 
@@ -171,6 +271,7 @@ void display_each_frame(void)
 
 	// A step backward, then spin the cube
 	glLoadIdentity();
+	drawText();
 	curser.draw();
 	cube.draw();
 
@@ -232,15 +333,6 @@ void enable_shader()
 
 
 
-graphics::Cube graphics::getcube()
-{
-	return cube;
-}
-
-graphics::Curser graphics::getcurser()
-{
-	return curser;
-}
 
 void graphics::setup(int argc, char ** argv)
 {
@@ -263,4 +355,77 @@ void graphics::setup(int argc, char ** argv)
 	enable_shader();
 	glutMainLoop();
 
+}
+
+
+
+
+
+graphics::cvParams::cvParams()
+{
+}
+
+graphics::cvParams::cvParams(cv::Point center, cv::Point prev_max, cv::Point prev_min, cv::Point max, cv::Point min)
+	: center(center), prev_max(prev_max), prev_min(prev_min), max(max), min(min)
+{}
+
+
+
+
+
+void graphics::updateParams(StaticState newState, cvParams param)
+{
+	static double distance;
+	parameters = param;
+	curser.position(param.center);
+	if (state != newState)
+	{
+		switch (state)
+		{
+		case STATE::StaticState::OPEN:
+			if (newState == STATE::StaticState::CLOSED)
+				curser.grab(cube, true);
+
+			if (newState == STATE::StaticState::PINCH)
+			{
+				distance = cv::norm(param.max - param.min);
+			}
+
+			break;
+		case STATE::StaticState::CLOSED:
+			if (newState == STATE::StaticState::OPEN)
+				curser.grab(cube, false);
+			break;
+		case STATE::StaticState::SCROLL:
+			break;
+		case STATE::StaticState::PINCH:
+			if (newState == STATE::StaticState::OPEN)
+				cube.set_scale();
+			break;
+		case STATE::StaticState::POINTER:
+			break;
+		default:
+			break;
+		}
+		state = newState;
+	}
+	
+	switch (state)
+	{
+	case STATE::StaticState::OPEN:
+		break;
+	case STATE::StaticState::CLOSED:
+		break;
+	case STATE::StaticState::SCROLL:
+		cube.rotate(param.center);
+		break;
+	case STATE::StaticState::PINCH:
+		cube.scale(cv::norm(param.max - param.min) / distance);
+		break;
+	case STATE::StaticState::POINTER:
+		break;
+	default:
+		break;
+	}
+	
 }

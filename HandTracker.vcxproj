@@ -123,9 +123,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Background.cpp" />
+    <ClCompile Include="Constants.cpp" />
     <ClCompile Include="Demo.cpp" />
-    <ClCompile Include="Graphics.cpp" />
+    <ClCompile Include="Exception.cpp" />
     <ClCompile Include="Hist.cpp" />
+    <ClCompile Include="HMM.cpp" />
+    <ClCompile Include="Log.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Analysis.cpp" />
     <ClCompile Include="Recognition.cpp" />
@@ -134,10 +137,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Background.h" />
+    <ClInclude Include="Constants.h" />
     <ClInclude Include="Demo.h" />
-    <ClInclude Include="Graphics.h" />
+    <ClInclude Include="Exception.h" />
     <ClInclude Include="Hist.h" />
     <ClInclude Include="Analysis.h" />
+    <ClInclude Include="HMM.h" />
+    <ClInclude Include="Log.h" />
     <ClInclude Include="Recognition.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="Tracker.h" />

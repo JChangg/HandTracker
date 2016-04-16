@@ -1,36 +1,26 @@
 #ifndef RECOGN_H
 #define RECOGN_H
+#include "Constants.h"
 
 #include<opencv2\core.hpp>
 #include<vector>
 #include<iostream>
 #include<math.h>
 #include<string>
+#include<fstream>
 #include"Analysis.h"
 #include"Demo.h"
-
-
-
-enum StaticState
-{
-	OPEN, CLOSED, SCROLL, PINCH, POINTER
-};
-
-enum MoveState
-{
-	MOVE, STATION, START
-};
-
+#include"HMM.h"
+using namespace STATE;
 
 
 class StateClassifier
 {
 private:
 	HandAnalysis hand_analyser;
-	cv::Point center;
+	cv::Point center; 
+	cv::Point max, min;
 	double radius;
-	double current_value;
-	double original_value;
 	inline bool update_center();
 	void update_move_state();
 public:
@@ -40,8 +30,32 @@ public:
 	StateClassifier(HandAnalysis &h);
 	void apply(HandAnalysis& hand);
 	StaticState getStaticState();
-	void printState();
-
+	std::string str();
 };
+
+
+class HMMClassifier
+{
+private:
+	HandAnalysis hand_analyser;
+	cv::Point center;
+	cv::Point max_point, min_point;
+	double radius;
+	HMM machine; 
+	cv::Mat prob;
+	inline bool update_center();
+	void update_move_state();
+public:
+	StaticState stat;
+	MoveState dynamic;
+	HMMClassifier();
+	HMMClassifier(HandAnalysis &h);
+	void apply(HandAnalysis& hand);
+	std::string str();
+};
+
+
+
+
 
 #endif // !RECOGN_H

@@ -14,9 +14,11 @@
 #include"Window.h"
 #include"Background.h"
 #include"Tracker.h"
-#include "Demo.h"
-//#include"Graphics.h"
-	
+#include"Demo.h"
+#include"Log.h"
+#include"Settings.h"	
+#include"Exception.h"
+
 #define LEFT_KEY 2424832
 #define RIGHT_KEY 2555904
 #define UP_KEY 2490368
@@ -30,25 +32,16 @@
 #define OP_MAIN 1
 #define OP_EXIT 2
 
-#define DEFAULT_SIZE cv::Size(100, 200)
-#define DEFAULT_POSITION cv::Point(400, 200)
-
-#define INIT_BACK_SUB 50
-
-////////////////////////////////////////////////////////
-#define HT_DISPLAY_DEMO true
+extern Logger program_log;
 
 
-////////////////////////////////////////////////////////
 
 int main(int argc, char ** argv)
 {
-
+	
 	long double start, end;					// timer
-	ofstream frames;
-	frames.open("frames.txt");
-
-
+	program_log.event("Initializing.");
+	
 	cv::VideoCapture stream(1);			// initialte stream from vidoe camera.
 
 	int operation_mode = OP_SETUP;
@@ -59,11 +52,13 @@ int main(int argc, char ** argv)
 
 	// initiate Mixture of Gaussian background subtractor
 	BackgroundSubtractor bg = BackgroundSubtractor(200, 24);
+	program_log.event("Learning background.");
 	for (int j = 0; j < INIT_BACK_SUB && stream.isOpened() && stream.read(imgBGR); j++)
 	{
-		cv::Mat bgImg;
+		cv::Mat bgImg; 
 		cv::flip(imgBGR, imgBGR, 1);						// flips the frame to mirrror movement
 		bg.apply_frame(imgBGR, foreground, 0.5);
+		
 		bg.getBackground(bgImg);
 		cv::imshow("Setting up Background...", bgImg);
 		int keypress = cv::waitKey(1);
@@ -71,7 +66,7 @@ int main(int argc, char ** argv)
 	
 	cv::destroyWindow("Setting up Background...");
 	Tracker tracker;
-	if (HT_DISPLAY_DEMO)
+	if (DISPLAY_DEMO)
 	{
 		std::thread t(graphics::setup, argc, argv);
 		t.detach();
@@ -80,6 +75,7 @@ int main(int argc, char ** argv)
 
 	// frame capture loop
 	while (stream.isOpened() && operation_mode != OP_EXIT) {
+		program_log.frame();
 		auto start = chrono::system_clock::now();
 		// Set up frame here.
 		if (!stream.read(imgBGR) || imgBGR.empty()) {
@@ -95,7 +91,7 @@ int main(int argc, char ** argv)
 		// setup stage displays window to capture histogram of hand
 		// window is allowed to move in position and change in szie
 		if (operation_mode == OP_SETUP) {
-
+			cv::MatND hist;
 			int delta = select_win.outer.size().width / 4.0;// unit size for the change in control
 			switch (keyPress)								// controls for the selection phase
 			{
@@ -118,7 +114,8 @@ int main(int argc, char ** argv)
 				select_win.scale(0.9);
 				break;
 			case ENTER_KEY:	
-				tracker = Tracker(select_win.inner, select_win.histogram(imgBGR), bg, 0.7);
+				hist = select_win.histogram(imgBGR);
+				tracker = Tracker(select_win.inner, hist, bg);
 				operation_mode = OP_MAIN;		// advance to tracking mode
 				break;
 			case ESC_KEY:
@@ -131,7 +128,16 @@ int main(int argc, char ** argv)
 		
 		// track the hand's position in real time 
 		else if (operation_mode == OP_MAIN) {
-			tracker.process_frame(imgBGR, imgHSV, foreground, backproj, segmented);
+			try 
+			{
+				tracker.process_frame(imgBGR, imgHSV, foreground, backproj, segmented);
+			}
+			catch(TrackingException& e)
+			{
+				std::cout << e.what() << endl;
+				program_log.except(e);
+				operation_mode = OP_SETUP;
+			}
 			switch (keyPress)
 			{
 			case 'r':
@@ -149,15 +155,10 @@ int main(int argc, char ** argv)
 		// display the window
 		cv::namedWindow("Tracker", CV_WINDOW_AUTOSIZE);
 		cv::imshow("Tracker", imgBGR); 
-		auto end = chrono::system_clock::now();
-		chrono::duration<double> diff = end - start;
-		frames.precision(17);
-		frames << diff.count() * 1000 << " ms" << endl;
 	}
 	cout << "Exiting tracker!" << endl;
 	cv::destroyAllWindows();
 	
-	frames.close();
 	std::system("pause");
 	return 0;
 }

@@ -2,15 +2,15 @@
 #define ANALYSIS_H
 #include<opencv2/core/core.hpp>
 #include<opencv2/imgproc/imgproc.hpp>
-#include"Window.h"
 #include<algorithm>
 #include<list>
-
+#include"Window.h"
+#include"Settings.h"
+#include"Exception.h"
 
 class HandAnalysis
 {
 private:
-	cv::Mat distTransform;	//distance transform of binary image.
 
 	CenteredRect bounding_box; //bounding box.
 	vector<cv::Point> hull, contour; 
@@ -24,19 +24,26 @@ private:
 	void find_center();
 	void find_wrist();
 	void find_center_orientation();
+	void refine_contour();
 	void finger_tips();
 	void finger_tips2();
+	void find_thumb();
+	void update_roi(CenteredRect& bounds);
 public:
+	cv::Mat distTransform;	//distance transform of binary image.
 	CenteredRect proposed_roi; //region as indicated by the meanshift algorithm. 
 	vector<cv::Point> fingers;
 	vector<double> finger_height;
 	cv::Point center, wrist;
 	double radius;
+	int thumb_indx;
+	cv::Point min_height, max_height;
 	cv::Mat frame, prob, thresh;
 
 	HandAnalysis();
 	void apply(cv::Mat &frame, cv::Mat &probImg, CenteredRect &bounds);
 	void show();
+
 };
 
 

@@ -13,8 +13,9 @@
 #include"Window.h"
 #include"Analysis.h"
 #include"Background.h"
-#include "Recognition.h"
-#include "Hist.h"
+#include"Recognition.h"
+#include"Settings.h"
+#include"Log.h"
 
 class Tracker
 {
@@ -23,19 +24,17 @@ private:
 	cv::RotatedRect tracking_window_fitted;
 	HandAnalysis hand_processer; 
 	StateClassifier classifier;
+	//HMMClassifier classifier;
 public:
-	double alpha, beta;
 	BackgroundSubtractor bg;
 	cv::MatND hist_model;
 	Tracker();
 
 	Tracker(CenteredRect& initial_window, cv::MatND& hist_model,
-		BackgroundSubtractor& bg = BackgroundSubtractor(1000, 16),
-		double alpha = 0.7);
+		BackgroundSubtractor& bg);
 
 	void set_window(CenteredRect& window);
 
-	void set_alpha(double alpha);
 
 	void process_frame(cv::Mat& input_BGR, cv::Mat& input_HSV, cv::Mat& output_foreground,
 		cv::Mat& output_backproj, cv::Mat& output);
