@@ -10,8 +10,8 @@ Tracker::Tracker(CenteredRect& initial_window, cv::MatND& hist_model, Background
 	: bg(bg), hist_model(hist_model), tracking_window(initial_window)
 {
 	hand_processer = HandAnalysis();
-	classifier = StateClassifier(hand_processer);
-	//classifier = HMMClassifier(hand_processer);
+	//classifier = StateClassifier(hand_processer);
+	classifier = HMMClassifier(hand_processer);
 	tracking_window_fitted = cv::RotatedRect(tracking_window.center(), tracking_window.size(), 0.0);
 }
 
@@ -22,6 +22,8 @@ void Tracker::process_frame(cv::Mat& input_BGR, cv::Mat& input_HSV, cv::Mat& out
 	bg.apply_frame(input_BGR, output_foreground, 0);
 
 	output_backproj = back_project(input_HSV, hist_model);
+
+
 	cv::bitwise_and(output_backproj, output_foreground, output_backproj);
 	cv::addWeighted(output_backproj, BACKPROJ_PROPORTION, 
 		output_foreground, 1- BACKPROJ_PROPORTION, 0.0, output);

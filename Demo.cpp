@@ -36,6 +36,7 @@ public:
 	void rotate(cv::Point& pt);
 	void position(cv::Point& pt);
 	void draw();
+	void reset();
 };
 
 class Curser
@@ -224,7 +225,7 @@ void Cube::set_scale()
 
 void Cube::rotate(cv::Point& pt)
 {	
-	double sensitivity = 30;
+	double sensitivity = 50;
 
 	Position pos = Position();
 	pos.translate(pt, -10);
@@ -254,6 +255,15 @@ void Cube::draw()
 	glPopMatrix();
 	angle += angle_delta;
 	angle_delta = 0;
+}
+
+void Cube::reset()
+{
+	angle = 0;
+	size = 0.5;
+	size_scale = 1;
+	x_angle = 0; y_angle = 0; z_angle = 0;
+	coord = Position(0, 0, -10);
 }
 
 
@@ -378,6 +388,7 @@ void graphics::updateParams(StaticState newState, cvParams param)
 	static double distance;
 	parameters = param;
 	curser.position(param.center);
+	double d = cv::norm(param.max - param.min);
 	if (state != newState)
 	{
 		switch (state)
@@ -388,7 +399,8 @@ void graphics::updateParams(StaticState newState, cvParams param)
 
 			if (newState == STATE::StaticState::PINCH)
 			{
-				distance = cv::norm(param.max - param.min);
+				if (d > 0) distance = d;
+				else newState = STATE::StaticState::OPEN;
 			}
 
 			break;
@@ -403,6 +415,7 @@ void graphics::updateParams(StaticState newState, cvParams param)
 				cube.set_scale();
 			break;
 		case STATE::StaticState::POINTER:
+			
 			break;
 		default:
 			break;
@@ -415,17 +428,21 @@ void graphics::updateParams(StaticState newState, cvParams param)
 	case STATE::StaticState::OPEN:
 		break;
 	case STATE::StaticState::CLOSED:
+		curser.grab(cube, true);
 		break;
 	case STATE::StaticState::SCROLL:
 		cube.rotate(param.center);
 		break;
 	case STATE::StaticState::PINCH:
-		cube.scale(cv::norm(param.max - param.min) / distance);
+		if (d > 0) 	cube.scale(d / distance);
 		break;
 	case STATE::StaticState::POINTER:
+		cube.reset();
 		break;
 	default:
 		break;
 	}
 	
+
+
 }

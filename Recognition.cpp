@@ -211,14 +211,14 @@ const cv::Mat prior = (cv::Mat_<double>(5, 1) <<
 	1);
 
 const cv::Mat transition = (cv::Mat_<double>(5, 5) << 
-	0.2, 0.0, 0.0, 0.0, 0.8,
-	0.2, 0.8, 0.0, 0.0, 0.0,
-	0.2, 0.0, 0.8, 0.0, 0.0,
-	0.2, 0.0, 0.0, 0.8, 0.0,
-	0.2, 0.2, 0.2, 0.2, 0.2);
+	0.15, 0.0, 0.0, 0.0, 0.85,
+	0.15, 0.85, 0.0, 0.0, 0.0,
+	0.15, 0.0, 0.85, 0.0, 0.0,
+	0.15, 0.0, 0.0, 0.85, 0.0,
+	0.14, 0.1, 0.13, 0.13, 0.5);
 
 const cv::Mat emission = (cv::Mat_<double>(5, 8) << 
-	0.8, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+	1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
 	0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
 	0.0, 0.1, 0.7, 0.2, 0.0, 0.0, 0.0, 0.0,
 	0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.6, 0.2,
@@ -278,51 +278,70 @@ void HMMClassifier::apply(HandAnalysis& hand)
 	hand_analyser = hand;
 	radius = hand_analyser.radius;
 	update_move_state();
-	int num = hand_analyser.fingers.size();
-	bool thumb = hand_analyser.thumb_indx < 0;
-	int emission = 0;
-
-	switch (num)
+	if (dynamic != MoveState::MOVE)
 	{
-	case 0:
-		emission = 0;
-		break;
-	case 1:
-		emission = 1;
-		break;
-	case 2:
-		if (thumb) emission = 6;
-		else emission = 2;
-		break;
-	case 3:
-		if (thumb) emission = 7;
-		else emission = 3;
-		break;
-	case 4:
-		emission = 4;
-		break;
-	case 5:
-		emission = 5;
-		break;
-	default:
-		emission = 5;
-		break;
-	}
 
-	prob = machine.filter(prob, emission);
-	double min = 0, max = 0; cv::Point pt(0);
-	cv::minMaxLoc(prob, &min, &max, &cv::Point(0), &pt);
-	cout << prob << endl;
-	if (max > 0.8) stat = (StaticState) pt.y;
-	graphics::cvParams param = graphics::cvParams();
-	param.center = center;
-	param.min = hand_analyser.min_height;
-	param.max = hand_analyser.max_height;
-	param.prev_min = min_point;
-	param.prev_max = max_point;
-	min_point = hand_analyser.min_height;
-	max_point = hand_analyser.max_height;
-	graphics::updateParams(stat, param);
+		int num = hand_analyser.fingers.size();
+		bool thumb = hand_analyser.thumb_indx < 0;
+		int emission = 0;
+
+		switch (num)
+		{
+		case 0:
+			emission = 0;
+			break;
+		case 1:
+			emission = 1;
+			break;
+		case 2:
+			if (thumb) emission = 6;
+			else emission = 2;
+			break;
+		case 3:
+			if (thumb) emission = 7;
+			else emission = 3;
+			break;
+		case 4:
+			emission = 4;
+			break;
+		case 5:
+			emission = 5;
+			break;
+		default:
+			emission = 5;
+			break;
+		}
+
+		prob = machine.filter(prob, emission);
+		double min = 0, max = 0; cv::Point pt(0);
+		cv::minMaxLoc(prob, &min, &max, &cv::Point(0), &pt);
+		//cout << prob << endl;
+		if (max > 0.95)
+		{
+			stat = (StaticState)pt.y;
+			graphics::cvParams param = graphics::cvParams();
+			param.center = center;
+			param.prev_min = min_point;
+			param.prev_max = max_point;
+			min_point = hand_analyser.min_height;
+			max_point = hand_analyser.max_height;
+			param.min = min_point;
+			param.max = max_point;
+			graphics::updateParams(stat, param);
+		}
+	}
+	else
+	{
+		graphics::cvParams param = graphics::cvParams();
+		param.center = center;
+		param.prev_min = min_point;
+		param.prev_max = max_point;
+		min_point = hand_analyser.min_height;
+		max_point = hand_analyser.max_height;
+		param.min = min_point;
+		param.max = max_point;
+		graphics::updateParams(stat, param);
+	}
 }
 
 std::string HMMClassifier::str()

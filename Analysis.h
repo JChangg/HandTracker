@@ -7,6 +7,7 @@
 #include"Window.h"
 #include"Settings.h"
 #include"Exception.h"
+#include"Log.h"
 
 class HandAnalysis
 {

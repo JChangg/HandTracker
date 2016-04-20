@@ -28,6 +28,10 @@
 #define MINUS_UNDERSCORE_KEY '-'
 #define ESC_KEY 27
 
+#define WRITER_CODEC CV_FOURCC('D', 'I', 'V', 'X')
+#define WRITER_FPS 8 
+#define MFRAME_SIZE cv::Size(640, 480)
+
 #define OP_SETUP 0
 #define OP_MAIN 1
 #define OP_EXIT 2
@@ -43,6 +47,11 @@ int main(int argc, char ** argv)
 	program_log.event("Initializing.");
 	
 	cv::VideoCapture stream(1);			// initialte stream from vidoe camera.
+	cv::VideoWriter output_stream;
+	std::string video_name = get_name() + ".avi";
+	if (TRACKER_RECORD) 
+		output_stream = cv::VideoWriter(video_name, WRITER_CODEC, WRITER_FPS, MFRAME_SIZE);
+	
 
 	int operation_mode = OP_SETUP;
 	cv::Mat imgBGR, imgHSV, backproj, foreground, hist, segmented;
@@ -51,7 +60,7 @@ int main(int argc, char ** argv)
 	Window select_win = Window(DEFAULT_POSITION, DEFAULT_SIZE);	
 
 	// initiate Mixture of Gaussian background subtractor
-	BackgroundSubtractor bg = BackgroundSubtractor(200, 24);
+	BackgroundSubtractor bg = BackgroundSubtractor(50, 24);
 	program_log.event("Learning background.");
 	for (int j = 0; j < INIT_BACK_SUB && stream.isOpened() && stream.read(imgBGR); j++)
 	{
@@ -130,6 +139,7 @@ int main(int argc, char ** argv)
 		else if (operation_mode == OP_MAIN) {
 			try 
 			{
+				if (TRACKER_RECORD) output_stream.write(imgBGR);
 				tracker.process_frame(imgBGR, imgHSV, foreground, backproj, segmented);
 			}
 			catch(TrackingException& e)
@@ -158,7 +168,8 @@ int main(int argc, char ** argv)
 	}
 	cout << "Exiting tracker!" << endl;
 	cv::destroyAllWindows();
-	
+	stream.release();
+	if (TRACKER_RECORD) output_stream.release();
 	std::system("pause");
 	return 0;
 }

@@ -23,8 +23,8 @@ private:
 	CenteredRect tracking_window;
 	cv::RotatedRect tracking_window_fitted;
 	HandAnalysis hand_processer; 
-	StateClassifier classifier;
-	//HMMClassifier classifier;
+	//StateClassifier classifier;
+	HMMClassifier classifier;
 public:
 	BackgroundSubtractor bg;
 	cv::MatND hist_model;

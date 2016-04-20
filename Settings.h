@@ -1,13 +1,13 @@
 /* GLOBAL */
 #define DISPLAY_DEMO true
 #define DISPLAY_CONTOUR_ANNOTATIONS true
-
+#define TRACKER_RECORD true
 /* INITIALIZATION */
 // initial position and size of the cabture window
 #define DEFAULT_SIZE cv::Size(100, 200)
-#define DEFAULT_POSITION cv::Point(400, 200)
+#define DEFAULT_POSITION cv::Point(320, 240)
 // number of initial background averaging frames
-#define INIT_BACK_SUB 100	
+#define INIT_BACK_SUB 150	
 
 /* SEGMENTATION & TRACKING */
 #define FRAME_LEARNING_RATE 0.2
