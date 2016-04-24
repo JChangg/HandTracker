@@ -17,6 +17,7 @@ namespace graphics
 	struct cvParams
 	{
 		cv::Point center, prev_max, prev_min, max, min;
+		double radius = 1;
 		cvParams();
 		cvParams(cv::Point center, cv::Point prev_max, cv::Point prev_min, cv::Point max, cv::Point min);
 	};

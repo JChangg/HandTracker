@@ -7,9 +7,11 @@ inline float dist(cv::Point& p, cv::Point& q)
 
 inline bool StateClassifier::update_center()
 {
-	bool station = (dist(hand_analyser.center, this->center) < hand_analyser.radius * 0.1);
-	if (station) this->center = (hand_analyser.center + this->center) / 2;
-	else this->center = hand_analyser.center;
+	double threshold;
+	if (dynamic == MoveState::MOVE) threshold = 0.6;
+	else threshold = 0.2;
+	bool station = (dist(hand_analyser.center, this->center) < hand_analyser.radius * threshold);
+	if (!station) this->center = hand_analyser.center;
 	return station;
 }
 
@@ -211,18 +213,18 @@ const cv::Mat prior = (cv::Mat_<double>(5, 1) <<
 	1);
 
 const cv::Mat transition = (cv::Mat_<double>(5, 5) << 
-	0.15, 0.0, 0.0, 0.0, 0.85,
-	0.15, 0.85, 0.0, 0.0, 0.0,
-	0.15, 0.0, 0.85, 0.0, 0.0,
-	0.15, 0.0, 0.0, 0.85, 0.0,
-	0.14, 0.1, 0.13, 0.13, 0.5);
+	0.05, 0.0, 0.0, 0.0, 0.95,
+	0.05, 0.95, 0.0, 0.0, 0.0,
+	0.05, 0.0, 0.95, 0.0, 0.0,
+	0.05, 0.0, 0.0, 0.95, 0.0,
+	0.014, 0.008, 0.014, 0.014, 0.95);
 
 const cv::Mat emission = (cv::Mat_<double>(5, 8) << 
 	1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
 	0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
 	0.0, 0.1, 0.7, 0.2, 0.0, 0.0, 0.0, 0.0,
 	0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.6, 0.2,
-	0.0, 0.0, 0.0, 0.0, 0.2, 0.8, 0.0, 0.0);
+	0, 0.05, 0.05, 0.05, 0.2, 0.6, 0.05, 0.05);
 
 
 
@@ -327,6 +329,7 @@ void HMMClassifier::apply(HandAnalysis& hand)
 			max_point = hand_analyser.max_height;
 			param.min = min_point;
 			param.max = max_point;
+			param.radius = radius;
 			graphics::updateParams(stat, param);
 		}
 	}
@@ -340,6 +343,7 @@ void HMMClassifier::apply(HandAnalysis& hand)
 		max_point = hand_analyser.max_height;
 		param.min = min_point;
 		param.max = max_point;
+		param.radius = radius;
 		graphics::updateParams(stat, param);
 	}
 }

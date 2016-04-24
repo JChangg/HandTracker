@@ -24,13 +24,13 @@ public:
 	cv::Point point;
 	Position coord;
 	Position rot_dir;
-
+	double alpha = 1;
 	double size;
 	double size_scale = 1;
-	double angle = 0;
-	double angle_delta = 0;
 	double x_angle, y_angle, z_angle;
+	double r = 1.0, g = 0.0, b = 0.0;
 	Cube();
+	Cube(double alpha);
 	void scale(double s);
 	void set_scale();
 	void rotate(cv::Point& pt);
@@ -60,8 +60,11 @@ void drawCubeOfCubes(GLfloat size);
 void display_each_frame(void);
 void reshape_on_resize(int w, int h);
 void enable_shader();
+bool compare_cubes(Cube& a, Cube& b);
 
 //////////////////////////////////////////////////////////////////
+
+
 
 
 // Set up module level variables.
@@ -71,8 +74,17 @@ StaticState state = StaticState::OPEN;
 graphics::cvParams parameters;
 Curser curser = Curser();
 Cube cube = Cube();
+Cube mask = Cube();
 
-
+bool compare_cubes(Cube& a, Cube& b)
+{
+	double scale = a.size*a.size_scale/b.size*b.size_scale;
+	bool same_size = scale > 0.9 && scale < 1.1;
+	Position p = a.coord - b.coord;
+	double dist2d = distance_sqred(a.coord, b.coord);
+	bool same_pos = dist2d < 0.015 * b.size * b.size_scale;
+	return same_size && same_pos;
+}
 
 inline double distance_sqred(Position p1, Position p2)
 {
@@ -210,6 +222,10 @@ void Curser::draw()
 Cube::Cube() 
 	: coord(Position(0, 0, -10)), size(0.5){}
 
+Cube::Cube(double alpha) 
+	: coord(Position(0, 0, -10)), size(0.5), alpha(alpha)
+{}
+
 void Cube::scale(double s)
 {
 	size_scale = s;
@@ -225,7 +241,7 @@ void Cube::set_scale()
 
 void Cube::rotate(cv::Point& pt)
 {	
-	double sensitivity = 50;
+	double sensitivity = 80;
 
 	Position pos = Position();
 	pos.translate(pt, -10);
@@ -244,8 +260,8 @@ void Cube::position(cv::Point& pt)
 
 void Cube::draw()
 {
-	if (angle > 360) angle -= 360;
-	glColor3f(1, 0, 0);
+	
+	glColor4f(r, g, b, alpha);
 	glPushMatrix();
 	glTranslatef(coord.x, coord.y, -10);
 	glRotatef(x_angle, 0, -1, 0);
@@ -253,13 +269,10 @@ void Cube::draw()
 	glRotatef(z_angle, 0, 0, 1);
 	drawCubeOfCubes(size*size_scale);	
 	glPopMatrix();
-	angle += angle_delta;
-	angle_delta = 0;
 }
 
 void Cube::reset()
 {
-	angle = 0;
 	size = 0.5;
 	size_scale = 1;
 	x_angle = 0; y_angle = 0; z_angle = 0;
@@ -276,6 +289,18 @@ void Cube::reset()
 */
 void display_each_frame(void)
 {
+	if (compare_cubes(cube, mask))
+	{
+		cube.r = 0; cube.g = 1; cube.b = 0;
+		mask.r = 0; mask.g = 1; mask.b = 0;
+	}
+	else
+	{
+		cube.r = 1; cube.g = 0; cube.b = 0;
+		mask.r = 1; mask.g = 0; mask.b = 0;
+	}
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	// Clear the buffer, clear the matrix 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -284,7 +309,7 @@ void display_each_frame(void)
 	drawText();
 	curser.draw();
 	cube.draw();
-
+	mask.draw();
 	// clear buffers
 	glFlush();
 	glutSwapBuffers();
@@ -346,6 +371,11 @@ void enable_shader()
 
 void graphics::setup(int argc, char ** argv)
 {
+	mask.alpha = 0.4;
+	mask.r = 1; mask.g = 1; mask.b = 1;
+	mask.size = 1.2;
+	mask.coord = Position(0.5, 0.5, 0);
+	
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
@@ -388,7 +418,7 @@ void graphics::updateParams(StaticState newState, cvParams param)
 	static double distance;
 	parameters = param;
 	curser.position(param.center);
-	double d = cv::norm(param.max - param.min);
+	double d = param.radius;
 	if (state != newState)
 	{
 		switch (state)
@@ -426,6 +456,10 @@ void graphics::updateParams(StaticState newState, cvParams param)
 	switch (state)
 	{
 	case STATE::StaticState::OPEN:
+		if (compare_cubes(cube, mask))
+		{
+			std::cout << "SUCCESS" << std::endl;
+		}
 		break;
 	case STATE::StaticState::CLOSED:
 		curser.grab(cube, true);
@@ -434,7 +468,8 @@ void graphics::updateParams(StaticState newState, cvParams param)
 		cube.rotate(param.center);
 		break;
 	case STATE::StaticState::PINCH:
-		if (d > 0) 	cube.scale(d / distance);
+		if (d > 0) 	
+			cube.scale((d / distance)*(d / distance));
 		break;
 	case STATE::StaticState::POINTER:
 		cube.reset();

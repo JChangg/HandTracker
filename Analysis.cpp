@@ -382,6 +382,9 @@ void HandAnalysis::find_wrist()
 	//cv::minMaxLoc(mask, &a, &b, &t, &wrist);
 	cv::Moments m = cv::moments(mask);
 	wrist = cv::Point(m.m10 / m.m00, m.m01 / m.m00);
+	cv::Point axis = wrist - center;
+	double temp = cv::norm(axis);
+	wrist = center + axis / temp * radius;
 }
 
 void HandAnalysis::find_center_orientation()

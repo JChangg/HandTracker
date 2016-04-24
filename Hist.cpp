@@ -1,7 +1,6 @@
 #include "Hist.h"
 
 
-
 cv::Mat flood_fill(cv::Mat& src, cv::Point seed, int lb=20, int ub=20)
 {
 	int newMaskVal = 255; 
@@ -62,6 +61,11 @@ cv::MatND get_hist_hsv(cv::Mat & hsv, cv::Mat & mask)
 
 	return hist;
 }
+
+
+
+
+
 
 
 cv::MatND back_project(cv::Mat& hsv, cv::MatND& hist)

@@ -3,6 +3,7 @@
 #include<opencv2/imgproc/imgproc.hpp>
 #include<opencv2/video/tracking.hpp>
 #include<opencv2/video/background_segm.hpp>
+#include<opencv2/photo.hpp>
 #include<stdexcept>
 #include<iostream>
 #include<string>
@@ -62,12 +63,13 @@ int main(int argc, char ** argv)
 	// initiate Mixture of Gaussian background subtractor
 	BackgroundSubtractor bg = BackgroundSubtractor(50, 24);
 	program_log.event("Learning background.");
+	cv::Ptr<cv::Tonemap> tm = cv::createTonemap(2.2);
+
 	for (int j = 0; j < INIT_BACK_SUB && stream.isOpened() && stream.read(imgBGR); j++)
 	{
 		cv::Mat bgImg; 
 		cv::flip(imgBGR, imgBGR, 1);						// flips the frame to mirrror movement
 		bg.apply_frame(imgBGR, foreground, 0.5);
-		
 		bg.getBackground(bgImg);
 		cv::imshow("Setting up Background...", bgImg);
 		int keypress = cv::waitKey(1);
@@ -93,8 +95,7 @@ int main(int argc, char ** argv)
 		}		
 		cv::flip(imgBGR, imgBGR, 1);						// flips the frame to mirrror movement
 		cv::cvtColor(imgBGR, imgHSV, cv::COLOR_BGR2HSV);	// convert the image to hue sturation and value image
-		
-		
+
 		int keyPress = cv::waitKey(1);						// waits 1ms and assigns keypress (if any) to keypress
 
 		// setup stage displays window to capture histogram of hand

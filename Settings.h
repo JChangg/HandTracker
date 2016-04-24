@@ -12,7 +12,7 @@
 /* SEGMENTATION & TRACKING */
 #define FRAME_LEARNING_RATE 0.2
 // histogram learning rate 
-#define HIST_LEARNING_RATE 0.5
+#define HIST_LEARNING_RATE 0.8
 // histogram distance threshold, larger distance 
 // frames won't be learnt.
 #define HIST_MAX_DISTANCE 0.6
