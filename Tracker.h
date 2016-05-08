@@ -28,6 +28,7 @@ private:
 public:
 	BackgroundSubtractor bg;
 	cv::MatND hist_model;
+	cv::MatND hist_model_original;
 	Tracker();
 
 	Tracker(CenteredRect& initial_window, cv::MatND& hist_model,

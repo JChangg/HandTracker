@@ -354,3 +354,7 @@ std::string HMMClassifier::str()
 	std::string m = dynamicStateString(dynamic);
 	return "(" + s + ", " + m + ")";
 }
+std::string HMMClassifier::str2()
+{
+	return staticStateString(stat);
+}

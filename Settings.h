@@ -35,3 +35,6 @@
 #define LOGGER_DIR "logs/"
 
 
+/* DEMO */
+// Target is the cube position desired
+#define DEMO_TARGET false

@@ -76,5 +76,6 @@ cv::MatND back_project(cv::Mat& hsv, cv::MatND& hist)
 	const float* ranges[] = { h_range, s_range };
 	cv::MatND backproj;
 	cv::calcBackProject(&hsv, 1, channels, hist, backproj, ranges, 1, true);
+	cv::normalize(backproj, backproj, 0, 255, cv::NORM_MINMAX, CV_8UC1);
 	return backproj;
 }

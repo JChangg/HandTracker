@@ -1,6 +1,6 @@
 #include "Log.h"
-Logger program_log;
-
+OperationLog op_log;
+ResultLog r_log;
 double diffclock(clock_t clock1, clock_t clock2) {
 
 	double diffticks = clock1 - clock2;
@@ -11,7 +11,7 @@ double diffclock(clock_t clock1, clock_t clock2) {
 
 Logger::Logger()
 {
-	std::string name = get_name();
+	name = get_name();
 	std::string fname = name + ".txt";
 	file.open(fname, std::fstream::out);
 	posfile.open(name + "_pos.txt", std::fstream::out);
@@ -51,6 +51,13 @@ void Logger::except(HandException & e)
 
 
 
+double ms_elapsed(LOG_TIME start, LOG_TIME end)
+{
+	std::chrono::duration<double> elapsed_seconds = end - start;
+	double ms = elapsed_seconds.count() * 1000;
+	return ms;
+}
+
 std::string get_name()
 {
 	struct tm timeinfo;
@@ -63,4 +70,79 @@ std::string get_name()
 	sstream << timeinfo.tm_sec ;
 	std::string name = sstream.str();
 	return name;
+}
+
+std::string get_name(std::string name)
+{
+	return LOGGER_DIR + name;
+}
+
+BasicLog::BasicLog()
+{
+}
+
+BasicLog::BasicLog(std::string name) 
+{
+	this->name = name;
+	file.open(this->name, std::fstream::out);
+}
+
+OperationLog::OperationLog()
+{
+}
+
+OperationLog::OperationLog(std::string name)
+	:BasicLog(name + "_op.txt"), key_press(-1)
+{
+	events = std::vector<bool>(6);
+}
+
+void OperationLog::start()
+{
+	frame_arrival = LOG_GET_TIME();
+}
+
+void OperationLog::frame()
+{
+	LOG_TIME t = LOG_GET_TIME();
+	double duration = ms_elapsed(frame_arrival, t);
+	frame_arrival = t;
+	file << duration;
+	file <<" "<< key_press;
+	file << std::endl;
+	key_press = -1;
+}
+
+void OperationLog::key(int keypress)
+{
+	key_press = keypress;
+}
+
+ResultLog::ResultLog()
+{
+}
+
+ResultLog::ResultLog(std::string name)
+	:BasicLog(name+"_r.txt")
+{
+}
+
+void ResultLog::time(double ms)
+{
+	file << ms << " ";
+}
+
+void ResultLog::message(std::string s)
+{
+	file << s << " ";
+}
+
+void ResultLog::position(cv::Point & p)
+{
+	file << p.x << " " << p.y;
+}
+
+void ResultLog::next()
+{
+	file << std::endl;
 }

@@ -1,6 +1,7 @@
 #ifndef DEMO_H
 #define DEMO_H
 #include "Constants.h"
+#include "Settings.h"
 #include <GL/glut.h>
 #include <math.h>
 #include <opencv2\core.hpp>

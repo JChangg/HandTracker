@@ -1,6 +1,8 @@
 #include"Analysis.h"
 #define _ROOT_TWO_ 1.41421356237309504880
-
+#define _COS_30_ 0.86602540378
+extern bool is_live;
+extern cv::VideoWriter seg2, seg3;
 inline float dist(cv::Point& p, cv::Point& q) 
 {
 	return cv::norm(p - q);
@@ -70,21 +72,6 @@ bool kcurvature_45(vector<cv::Point>& contour, int index, int k_value)
 }
 
 
-inline int point_above_line(cv::Point l1, cv::Point l2, cv::Point pt)
-{
-	double d = (pt.x - l1.x)*(l2.y - l1.y) - (pt.y - l1.y)*(l2.x - l1.x);
-	if (d > 0) return 1;
-	else if (d < 0) return -1;
-	else return  0;
-}
-
-
-inline int point_above_line_v2(cv::Point point_on_line, cv::Point direction, cv::Point point)
-{
-	cv::Point l1 = point_on_line - 10 * direction;
-	cv::Point l2 = point_on_line + 10 * direction;
-	return point_above_line(l1, l2, point);
-}
 
 inline double distance_from_line(cv::Point l1, cv::Point l2, cv::Point pt)
 {
@@ -124,7 +111,6 @@ int closest_index(std::vector<cv::Point> pts, cv::Point& point)
 	return min_index;
 }
 
-extern Logger program_log;
 
 vector<cv::Point> contourClustering(vector<cv::Point> contour, list<int> potential_indices)
 {
@@ -233,29 +219,37 @@ void HandAnalysis::apply(cv::Mat &frame, cv::Mat &probImg, CenteredRect &bounds)
 	max_contour();
 	find_center_orientation();
 	refine_contour();
+	if (!is_live)
+	{
+		cv::Mat img = cv::Mat::zeros(frame.size(), CV_8U);
+		vector<vector<cv::Point>> temp_contour(0);
+		temp_contour.push_back(contour);
+		cv::drawContours(img, temp_contour, 0, CV_RGB(255,255,255), -1);
+		seg3.write(img);
+	}
 	max_hull();
 	//finger_tips();
 	finger_tips2();
 	find_thumb();
 	update_roi(bounds);
-	program_log.update_position(center);
 }
 
 void HandAnalysis::show()
 {
 	if (contour.size() > 0)
 	{
+
 		vector<vector<cv::Point>> temp_contour(0);
 		vector<vector<cv::Point>> temp_hull(0);
 		temp_contour.push_back(contour);
 		temp_hull.push_back(hull);
 		cv::drawContours(frame, temp_contour, 0, CV_RGB(0, 255, 0), 2, 8);
 
+		
 		cv::drawContours(frame, temp_hull, 0, CV_RGB(0, 0, 255), 2, 8);
 		for (cv::Point finger : fingers)
 			cv::circle(frame, finger, 5, CV_RGB(255, 0, 0), 2);
 		
-
 		cv::circle(frame, center, 5, CV_RGB(255, 0, 255), 2);
 		cv::circle(frame, center, radius * TIP_RADIUS, CV_RGB(255, 0, 255), 1);
 		cv::circle(frame, center, radius, CV_RGB(255, 0, 255), 2);
@@ -263,6 +257,7 @@ void HandAnalysis::show()
 
 		if (thumb_indx >= 0)
 			cv::circle(frame, fingers[thumb_indx], 5, CV_RGB(187, 144, 212), -1);
+			
 	}
 
 }
@@ -308,8 +303,11 @@ void HandAnalysis::max_contour()
 		}
 	}
 
-	if (max_index == -1) throw TrackingException();
-
+	if (max_index == -1)
+	{
+		std::cout << "Tracking Exception1" << endl;
+		throw TrackingException();
+	}
 	contour = contours[max_index];
 	bounding_box = cv::boundingRect(contour);
 	// update thresholded binary image with the maximum contour. 
@@ -348,16 +346,24 @@ void HandAnalysis::max_hull()
 		cv::convexityDefects(contour, hull_indices, defects);
 	}
 
-	else throw TrackingException();
+	else
+	{
+		std::cout << "Tracking Exception2" << endl;
+		throw TrackingException();
+	}
 
 }
 
 void HandAnalysis::find_center()
 {
+	CenteredRect roi = proposed_roi & cv::Rect(cv::Point(0, 0), frame.size());
+	roi.enlarge(roi.center(), 5);
+	roi = roi & cv::Rect(cv::Point(0, 0), frame.size());
 	distTransform = cv::Mat::zeros(frame.size(), CV_32F);
-	cv::distanceTransform(thresh(bounding_box), distTransform(bounding_box), CV_DIST_L2, 3, CV_32F);
+	cv::distanceTransform(thresh(roi), distTransform(roi), CV_DIST_L2, 3, CV_32F);
 	double a, b; cv::Point t;
 	cv::minMaxLoc(distTransform(proposed_roi), &a, &b, &t, &center);
+
 	center += proposed_roi.tl();
 	radius = distTransform.at<float>(center);
 
@@ -373,18 +379,26 @@ void HandAnalysis::find_wrist()
 	cv::Mat dist;
 	cv::normalize(distTransform, dist, 0, 1., cv::NORM_MINMAX);
 	cv::Mat mask = cv::Mat::zeros(frame.size(), CV_32F);
-	cv::circle(mask, center, radius-1, cv::Scalar(1), 2);
+	if (radius == 0)return;
+	cv::circle(mask, center, radius, cv::Scalar(1), 10);
 	cv::rectangle(mask, cv::Rect(center - cv::Point(radius, radius), 
 		center + cv::Point(radius, 0)), CV_RGB(0, 0, 0), -1);
 
 	cv::bitwise_and(mask, dist, mask);
+	cv::blur(mask, mask, cv::Size(7,7));
 	double a, b; cv::Point t;
-	//cv::minMaxLoc(mask, &a, &b, &t, &wrist);
-	cv::Moments m = cv::moments(mask);
-	wrist = cv::Point(m.m10 / m.m00, m.m01 / m.m00);
+	cv::minMaxLoc(mask, &a, &b, &t, &wrist);
 	cv::Point axis = wrist - center;
-	double temp = cv::norm(axis);
-	wrist = center + axis / temp * radius;
+	double temp = cv::sqrt(axis.x * axis.x + axis.y * axis.y);
+	static cv::Point2f dir;
+	cv::Point2f new_dir = cv::Point2f(axis.x/temp, axis.y/temp);
+	if (dir == cv::Point2f(0,0) || dir.ddot(new_dir) > _COS_30_)
+	{	// change in angle is smaller than 30 degrees.
+		if (frame.size().height - center.y > 1.5 * radius)
+			dir = new_dir;
+	}
+
+	wrist = center +(cv::Point) (dir * radius);
 }
 
 void HandAnalysis::find_center_orientation()
@@ -469,10 +483,11 @@ void HandAnalysis::finger_tips2()
 		cv::Point start(contour[def.val[0]]);
 		cv::Point end(contour[def.val[1]]);
 		cv::Point far(contour[def.val[2]]);
-
 		double depth = def.val[3] / 256.0;
 		if (depth > radius * 0.8)
+		{
 			filteredDefects.push_back(def.val[2]);
+		}
 	}
 	filteredDefects.push_back(contour.size() - 1);
 	std::sort(filteredDefects.begin(), filteredDefects.end());
@@ -486,11 +501,6 @@ void HandAnalysis::finger_tips2()
 		int max_indx = indx1;
 		for (int j = indx1; j < indx2; j++)
 		{
-			/*
-			double d1 = dist(contour[j], contour[indx1]);
-			double d2 = dist(contour[j], contour[indx2]);
-			double min_dist = cv::min(d1, d2);
-			*/
 			double min_dist = dist(contour[j], center);
 			if (min_dist > max_dist)
 			{
@@ -505,7 +515,7 @@ void HandAnalysis::finger_tips2()
 			}
 		}
 		int k = cv::min(max_indx - indx1, indx2 - max_indx);
-		if (kcurvature_45(contour, max_indx, 2))
+		if (kcurvature_45(contour, max_indx, 4))
 		{
 			cv::Point tip = contour[max_indx];
 			double distance = dist(tip, center);

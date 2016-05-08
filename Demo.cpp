@@ -5,6 +5,7 @@
 #define DEFAULT_HEIGHT 480
 #define DEFAULT_WIDTH 640
 
+bool demo_on = false;
 
 class Position
 {
@@ -289,7 +290,8 @@ void Cube::reset()
 */
 void display_each_frame(void)
 {
-	if (compare_cubes(cube, mask))
+
+	if (DEMO_TARGET && compare_cubes(cube, mask))
 	{
 		cube.r = 0; cube.g = 1; cube.b = 0;
 		mask.r = 0; mask.g = 1; mask.b = 0;
@@ -309,7 +311,7 @@ void display_each_frame(void)
 	drawText();
 	curser.draw();
 	cube.draw();
-	mask.draw();
+	if (DEMO_TARGET) mask.draw();
 	// clear buffers
 	glFlush();
 	glutSwapBuffers();
@@ -371,10 +373,13 @@ void enable_shader()
 
 void graphics::setup(int argc, char ** argv)
 {
-	mask.alpha = 0.4;
-	mask.r = 1; mask.g = 1; mask.b = 1;
-	mask.size = 1.2;
-	mask.coord = Position(0.5, 0.5, 0);
+	if (DEMO_TARGET)
+	{
+		mask.alpha = 0.4;
+		mask.r = 1; mask.g = 1; mask.b = 1;
+		mask.size = 1.2;
+		mask.coord = Position(0.5, 0.5, 0);
+	}
 	
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
@@ -456,7 +461,7 @@ void graphics::updateParams(StaticState newState, cvParams param)
 	switch (state)
 	{
 	case STATE::StaticState::OPEN:
-		if (compare_cubes(cube, mask))
+		if (DEMO_TARGET && compare_cubes(cube, mask))
 		{
 			std::cout << "SUCCESS" << std::endl;
 		}
@@ -477,7 +482,4 @@ void graphics::updateParams(StaticState newState, cvParams param)
 	default:
 		break;
 	}
-	
-
-
 }

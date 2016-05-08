@@ -52,6 +52,7 @@ public:
 	HMMClassifier(HandAnalysis &h);
 	void apply(HandAnalysis& hand);
 	std::string str();
+	std::string str2();
 };
 
 
